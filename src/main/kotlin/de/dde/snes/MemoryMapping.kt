@@ -1,11 +1,9 @@
 package de.dde.snes
 
-import java.nio.ByteOrder
-
 sealed class MemoryMapping {
     abstract fun isUsed(cartridge: Cartridge): Boolean
 
-    abstract fun byte(memory: Memory, bank: Int, page: Int, index: Int): Byte
+    abstract fun byte(memory: Memory, bank: Int, address: Int): Byte
 
     abstract fun readHeader(cartridge: Cartridge): CartridgeHeader
 }
@@ -25,72 +23,65 @@ object LoRom : MemoryMapping() {
         return true
     }
 
-    override fun byte(memory: Memory, bank: Int, page: Int, index: Int): Byte {
+    override fun byte(memory: Memory, bank: Int, address: Int): Byte {
         return when {
             // special address in lower half, the rest is copy in both halfes
             bank in 0x7E..0x7F -> {
                 // wram
                 val b = bank - 0x7E
-                val p = page
 
-                val a = index + p * PAGE_SIZE + b * BANK_SIZE
-                return memory.wram[a]
+                val a = address + b * BANK_SIZE
+                return byte(memory, memory.wram, a)
             }
             // in every other case copy from left half
             bank < 0x7e -> {
                 //copy of left half
-                byte(memory, bank + 0x80, page, index)
+                byte(memory, bank + 0x80, address)
             }
 
-            // lower half of the rest
-            // right side of the lower half
-            bank < 0xC0 && page < 2 -> {
-                // copy of wram
-                byte(memory, 0x7e, page, index)
-            }
-            bank < 0xC0 && page == 0x2 && index in 0x100..0x1FF -> {
-                // ppu
-                // 0x100 = 16 * 16 * 8 = 2k
-                // 2k * 0x40 = 128 k
-                return 0
-            }
-            bank < 0xC0 && page == 0x4 && index in 0x200..0x3FF -> {
-                // cpu
-                return 0
-            }
-            bank < 0xC0 && page == 0x4 && index in 0x010..0x011 -> {
-                // joycon
-                return 0
-            }
-            bank < 0xC0 && page < 8 -> {
-                // open bus
-                error("invalid memory access")
-            }
-
-            // lorom specifics
-            page >= 8 -> {
+            // lorom specifics - upper half is completely rom
+            address >= 0x8000 -> {
                 // rom access
                 val b = bank - 0x80
-                val p = page - 0x8
 
-                val a = index + p * PAGE_SIZE + b * BANK_SIZE / 2
+                val a = address - 0x8000 + b * BANK_SIZE / 2
                 return memory.cartridge.data[a]
             }
-            bank in 0xF0..0xFF && page < 8 -> {
+            // lower half of the rest
+            // right side of the lower half
+            bank < 0xC0 && address < 0x2000 -> {
+                // copy of wram
+                byte(memory, 0x7e, address)
+            }
+            bank < 0xC0 && address < 0x6000 -> {
+                // hardware register
+                // TODO
+                //return memory.readHardwareRegister(address)
+                return 0
+            }
+            bank < 0xC0 -> {
+                // open bus
+                return -1
+            }
+            bank < 0xF0 -> {
+                // copy of rom
+                return byte(memory, bank, address + 0x8000)
+            }
+            bank in 0xF0..0xFF -> {
+                // sram copies itself along
                 // sram
                 val b = bank - 0xF0
-                val p = page
 
-                val a = index + p * PAGE_SIZE + b * BANK_SIZE * 2
+                val a = address + b * BANK_SIZE / 2
                 return memory.sram[a]
             }
-            bank >= 0xC0 -> {
-                // copy of rom
-                return byte(memory, bank, page + 0x8, index)
-            }
 
-            else -> error("invalid memory access")
+            else -> -1
         }
+    }
+
+    private fun byte(memory: Memory, data: ByteArray, index: Int): Byte {
+        return if (index < data.size) data[index] else -1
     }
 
     override fun readHeader(cartridge: Cartridge): CartridgeHeader {
@@ -136,7 +127,7 @@ object HiRom : MemoryMapping() {
         return true
     }
 
-    override fun byte(memory: Memory, bank: Int, page: Int, index: Int): Byte {
+    override fun byte(memory: Memory, bank: Int, address: Int): Byte {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
