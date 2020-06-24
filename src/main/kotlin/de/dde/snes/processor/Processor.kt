@@ -1,6 +1,7 @@
 package de.dde.snes.processor
 
 import de.dde.snes.*
+import de.dde.snes.memory.*
 
 
 class Processor(
@@ -357,7 +358,10 @@ class Processor(
     }
 
     private fun fetch(): Int {
-        val v = memory.readByte(BankNo(rPBR.value), ShortAddress(rPC.value))
+        val v = memory.readByte(
+            BankNo(rPBR.value),
+            ShortAddress(rPC.value)
+        )
         rPC.inc()
         return v
     }
@@ -366,47 +370,123 @@ class Processor(
     private inline fun fetchLongAddress(): Int = fetchShort() + (fetch() shl 16)
 
     /** a */
-    private fun opAbsolute() = FullAddress(BankNo(rDBR.value), ShortAddress(fetchShort()))
+    private fun opAbsolute() = FullAddress(
+        BankNo(rDBR.value),
+        ShortAddress(fetchShort())
+    )
     /** (a, x) */
-    private fun opAbsoluteIndexedIndirect() = FullAddress(BankNo(rPBR.value), shortAddress(fetchShort() + rX))
+    private fun opAbsoluteIndexedIndirect() = FullAddress(
+        BankNo(rPBR.value),
+        shortAddress(fetchShort() + rX)
+    )
     /** a,x */
-    private fun opAbsoluteIndexedWithX() = FullAddress(BankNo(rDBR.value), shortAddress(fetchShort() + rX))
+    private fun opAbsoluteIndexedWithX() = FullAddress(
+        BankNo(rDBR.value),
+        shortAddress(fetchShort() + rX)
+    )
     /** a,y */
-    private fun opAbsoluteIndexedWithY() = FullAddress(BankNo(rDBR.value), shortAddress(fetchShort() + rY.value))
+    private fun opAbsoluteIndexedWithY() = FullAddress(
+        BankNo(rDBR.value),
+        shortAddress(fetchShort() + rY.value)
+    )
     /** (a) */
-    private fun opAbsoluteIndirect() = FullAddress(BankNo(0), ShortAddress(fetchShort()))
+    private fun opAbsoluteIndirect() = FullAddress(
+        BankNo(0),
+        ShortAddress(fetchShort())
+    )
     /** al,x */
-    private fun opAbsoluteLongIndexedWithX() = fullAddress(fetchLongAddress() + rX)
+    private fun opAbsoluteLongIndexedWithX() =
+        fullAddress(fetchLongAddress() + rX)
     /** al */
     private fun opAbsoluteLong() = FullAddress(fetchLongAddress())
     /** (d,x) */
-    private fun opDirectIndexedIndirect() = FullAddress(BankNo(rDBR.value), ShortAddress(memory.readShort(BankNo(0), shortAddress(fetch() + rD + rX))))
+    private fun opDirectIndexedIndirect() = FullAddress(
+        BankNo(rDBR.value),
+        ShortAddress(
+            memory.readShort(
+                BankNo(
+                    0
+                ), shortAddress(fetch() + rD + rX)
+            )
+        )
+    )
     /** d,x */
-    private fun opDirectIndexedWithX() = FullAddress(BankNo(0), shortAddress(fetch() + rD + rX))
+    private fun opDirectIndexedWithX() = FullAddress(
+        BankNo(0),
+        shortAddress(fetch() + rD + rX)
+    )
     /** d.y */
-    private fun opDirectIndexedWithY() = FullAddress(BankNo(0), shortAddress(fetch() + rD + rY))
+    private fun opDirectIndexedWithY() = FullAddress(
+        BankNo(0),
+        shortAddress(fetch() + rD + rY)
+    )
     /** (d),y */
-    private fun opDirectIndirectIndexed() = FullAddress(BankNo(rDBR.value), shortAddress(memory.readShort(BankNo(0), shortAddress(fetchShort() + rD)) + rY))
+    private fun opDirectIndirectIndexed() = FullAddress(
+        BankNo(rDBR.value),
+        shortAddress(
+            memory.readShort(
+                BankNo(
+                    0
+                ), shortAddress(fetchShort() + rD)
+            ) + rY
+        )
+    )
     /** \[d],y */
-    private fun opDirectIndirectLongIndexed() = fullAddress(memory.readAddress(BankNo(0), shortAddress(fetch() + rD)) + rY)
+    private fun opDirectIndirectLongIndexed() = fullAddress(
+        memory.readAddress(
+            BankNo(0),
+            shortAddress(fetch() + rD)
+        ) + rY
+    )
     /** \[d] */
-    private fun opDirectIndirectLong() = FullAddress(memory.readAddress(BankNo(0), ShortAddress(fetch() + rD)))
+    private fun opDirectIndirectLong() = FullAddress(
+        memory.readAddress(
+            BankNo(0),
+            ShortAddress(fetch() + rD)
+        )
+    )
     /** (d) */
-    private fun opDirectIndirect() = FullAddress(BankNo(rDBR.value), ShortAddress(memory.readShort(BankNo(0), shortAddress(fetch() + rD))))
+    private fun opDirectIndirect() = FullAddress(
+        BankNo(rDBR.value),
+        ShortAddress(
+            memory.readShort(
+                BankNo(
+                    0
+                ), shortAddress(fetch() + rD)
+            )
+        )
+    )
     /** d */
-    private fun opDirect() = FullAddress(BankNo(0), shortAddress(fetch() + rD))
+    private fun opDirect() = FullAddress(
+        BankNo(0),
+        shortAddress(fetch() + rD)
+    )
     /** # */
     private fun opImmediate(cnt: Int) = if (cnt == 1) fetch() else fetchShort()
     /** rl */
     // toShort converts it to signed, and toInt is needed for the calculation
-    private fun opProgramCounterRelativeLong() = shortAddress(fetchShort().toShort().toInt() + rPC)
+    private fun opProgramCounterRelativeLong() =
+        shortAddress(fetchShort().toShort().toInt() + rPC)
     /** r */
     // toByte converts it to signed, and toInt is needed for the calculation
-    private fun opProgramCounterRelative() = shortAddress(fetch().toByte().toInt() + rPC)
+    private fun opProgramCounterRelative() =
+        shortAddress(fetch().toByte().toInt() + rPC)
     /** d,s */
-    private fun opStackRelative() = FullAddress(BankNo(0), shortAddress(fetch() + rS))
+    private fun opStackRelative() = FullAddress(
+        BankNo(0),
+        shortAddress(fetch() + rS)
+    )
     /** (d,s),y */
-    private fun opStackRelativeIndirectIndexed() = FullAddress(BankNo(rDBR.value), shortAddress(memory.readShort(BankNo(0), shortAddress(fetch() + rS)) + rY))
+    private fun opStackRelativeIndirectIndexed() = FullAddress(
+        BankNo(rDBR.value),
+        shortAddress(
+            memory.readShort(
+                BankNo(
+                    0
+                ), shortAddress(fetch() + rS)
+            ) + rY
+        )
+    )
     // Accumulator -A
     // Block move -xyc
     // implied -i -> no further bytes used -> operand defined by instruction
@@ -1275,7 +1355,9 @@ class Processor(
         }
 
         fun pushByte(value: Int) {
-            memory.writeByte(BankNo(0), ShortAddress(this.value), value)
+            memory.writeByte(
+                BankNo(0),
+                ShortAddress(this.value), value)
             dec()
         }
 
@@ -1286,7 +1368,10 @@ class Processor(
 
         fun pullByte(): Int {
             inc()
-            return memory.readByte(BankNo(0), ShortAddress(value))
+            return memory.readByte(
+                BankNo(0),
+                ShortAddress(value)
+            )
         }
 
         fun pullShort(): Int {
@@ -1306,12 +1391,18 @@ class Processor(
 
         private const val BIT_BREAK = BIT_INDEX
 
-        private val COP_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFF4)
-        private val NATIVE_BRK_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFF6)
-        private val ABORT_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFF8)
-        private val NMI_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFFA)
-        private val RESET_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFFC)
-        private val IRQ_VECTOR_ADDRESS: ShortAddress = ShortAddress(0xFFFE)
+        private val COP_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFF4)
+        private val NATIVE_BRK_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFF6)
+        private val ABORT_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFF8)
+        private val NMI_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFFA)
+        private val RESET_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFFC)
+        private val IRQ_VECTOR_ADDRESS: ShortAddress =
+            ShortAddress(0xFFFE)
         private val EMULATION_BRK_VECTOR_ADDRESS: ShortAddress = IRQ_VECTOR_ADDRESS
 
         private inline operator fun Int.plus(s: StackPointer) = if(s._8bitMode) this + s.value and 0xFF else this + s.value
@@ -1321,5 +1412,21 @@ class Processor(
         private fun Memory.readFor(register: DiffSizeRegister, address: FullAddress) = if(register._8bitMode) readByte(address.bankNo, address.shortAaddress) else readShort(address.bankNo, address.shortAaddress)
         private fun Memory.writeFor(register: DiffSizeRegister, address: FullAddress, value: Int = register.value) = if (register._8bitMode) writeByte(address.bankNo, address.shortAaddress, value) else writeShort(address.bankNo, address.shortAaddress, value)
 
+        private fun Memory.read(bank: BankNo, address: ShortAddress, byte: Boolean) = if (byte) readByte(bank, address) else readShort(bank, address)
+        private fun Memory.read(address: FullAddress, byte: Boolean) = if (byte) readByte(address.bankNo, address.shortAaddress) else readShort(address.bankNo, address.shortAaddress)
+        private fun Memory.readShort(bank: BankNo, address: ShortAddress): Int {
+            return readByte(bank, address) + (readByte(bank,
+                shortAddress(address.shortAddress + 1)
+            ) shl 8)
+        }
+        private fun Memory.readAddress(bank: BankNo, address: ShortAddress): Int {
+            return readShort(bank, address) + (readByte(bank,
+                shortAddress(address.shortAddress + 2)
+            ) shl 16)
+        }
+        private fun Memory.writeShort(bank: BankNo, address: ShortAddress, value: Int) {
+            writeByte(bank, address, value and 0xFF)
+            writeByte(bank, ShortAddress(address.shortAddress + 1), value and 0xFF00 shr 8)
+        }
     }
 }

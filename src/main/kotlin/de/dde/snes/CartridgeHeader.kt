@@ -11,7 +11,7 @@ data class CartridgeHeader(
     val cTypeSub: Byte,
 
     val name: String,
-    val mapMode: Byte,
+    val mapModeRaw: Byte,
     val cTypeRaw: Byte,
     val romSize: Byte,
     val sramSize: Byte,
@@ -22,6 +22,7 @@ data class CartridgeHeader(
     val checksum: Short,
 
     val exRamSize: ExRamSize = ExRamSize.byCode(exRamSizeRaw),
+    val mapMode: MapMode = MapMode.byCode(mapModeRaw),
     val romType: RomType = RomType.byCode(cTypeRaw),
     val destination: Destination = Destination.byCode(destinationRaw)
 ) {
@@ -145,6 +146,21 @@ enum class RomType(val code: Byte) {
     val sa1 = code.toInt() ushr 4 == 3
     val otherChip = code.toInt() ushr 4 == 0xE
     val customChip = code.toInt() ushr 4 == 0xF
+
+    companion object {
+        fun byCode(code: Byte) = values().find { it.code == code } ?: UNKNOWN
+    }
+}
+
+enum class MapMode(val code: Byte) {
+    LOROM(0x20),
+    HIROM(0x21),
+    SA1ROM(0x23),
+    FAST_LOROM(0x30),
+    FAST_HIROM(0x31),
+    EX_LOROM(0x32),
+    EX_HIROM(0x35),
+    UNKNOWN(-1);
 
     companion object {
         fun byCode(code: Byte) = values().find { it.code == code } ?: UNKNOWN

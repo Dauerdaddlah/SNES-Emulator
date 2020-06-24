@@ -1,9 +1,9 @@
 package de.dde.snes
 
+import de.dde.snes.memory.BankNo
+import de.dde.snes.memory.Memory
+import de.dde.snes.memory.ShortAddress
 import snes.SNES
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.nio.file.Files
 import java.nio.file.Paths
 
 fun main() {
@@ -14,11 +14,11 @@ fun main() {
 
     val c = Cartridge(p)
 
-    val memory = Memory(c)
-
     println(c.header)
 
-    val m = c.mode
+    val memory = Memory(c)
+
+    println(memory.readByte(BankNo(0), ShortAddress(0xFFFC)) + (memory.readByte(BankNo(0), ShortAddress(0xFFFD)) shl 8))
 
     //println(m.byte(memory, 0, v and 0xF000 ushr 12, v and 0xFFF).toString(16))
 }
