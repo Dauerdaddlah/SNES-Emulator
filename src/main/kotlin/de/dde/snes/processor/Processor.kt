@@ -296,13 +296,13 @@ class Processor(
             = Instruction { action(operand()) }
     /** instruction with read from address, the address is given by the operand and the read-size is determined by the given register */
     private inline fun instructionRR(crossinline action: (Int) -> Unit, crossinline getAddress: () -> FullAddress, register: DiffSizeRegister)
-            = Instruction { action(memory.readFor(register, getAddress())) }
+            = Instruction { action(readFor(register, getAddress())) }
     /** instruction with read from and write to address, the address is given by the operand and the read/write-size is determined by the given register */
     private inline fun instructionWR(crossinline  action: (Int) -> Int, crossinline getAddress: () -> FullAddress, register: DiffSizeRegister)
-            = Instruction { getAddress().let { memory.writeFor(register, it, action(memory.readFor(register, it))) } }
+            = Instruction { getAddress().let { writeFor(register, it, action(readFor(register, it))) } }
     /** instruction with read from and write to address, the address is given by the operand and the read/write-size is determined by the given register */
     private inline fun instructionWR(crossinline  action: (DiffSizeRegister, Int) -> Int, crossinline getAddress: () -> FullAddress, register: DiffSizeRegister)
-            = Instruction { getAddress().let { memory.writeFor(register, it, action(register, memory.readFor(register, it))) } }
+            = Instruction { getAddress().let { writeFor(register, it, action(register, readFor(register, it))) } }
     /** instruction which reads the operand from A and sets A */
     private inline fun instructionSR(crossinline action: (Int) -> Int, register: Register)
             = Instruction { register.set(action(register.get())) }
@@ -351,14 +351,14 @@ class Processor(
         rPBR.reset()
         rS.reset()
 
-        rPC.value = memory.readShort(
+        rPC.value = readWord(
             BankNo(rDBR.value),
             RESET_VECTOR_ADDRESS
         )
     }
 
     private fun fetch(): Int {
-        val v = memory.readByte(
+        val v = readByte(
             BankNo(rPBR.value),
             ShortAddress(rPC.value)
         )
@@ -366,8 +366,10 @@ class Processor(
         return v
     }
 
-    private inline fun fetchShort(): Int = fetch() + (fetch() shl 8)
-    private inline fun fetchLongAddress(): Int = fetchShort() + (fetch() shl 16)
+    private fun fetchShort()
+        = fetch() + (fetch() shl 8)
+    private fun fetchLongAddress()
+        = fetchShort() + (fetch() shl 16)
 
     /** a */
     private fun opAbsolute() = FullAddress(
@@ -403,7 +405,7 @@ class Processor(
     private fun opDirectIndexedIndirect() = FullAddress(
         BankNo(rDBR.value),
         ShortAddress(
-            memory.readShort(
+            readWord(
                 BankNo(
                     0
                 ), shortAddress(fetch() + rD + rX)
@@ -424,7 +426,7 @@ class Processor(
     private fun opDirectIndirectIndexed() = FullAddress(
         BankNo(rDBR.value),
         shortAddress(
-            memory.readShort(
+            readWord(
                 BankNo(
                     0
                 ), shortAddress(fetchShort() + rD)
@@ -433,14 +435,14 @@ class Processor(
     )
     /** \[d],y */
     private fun opDirectIndirectLongIndexed() = fullAddress(
-        memory.readAddress(
+        readLong(
             BankNo(0),
             shortAddress(fetch() + rD)
         ) + rY
     )
     /** \[d] */
     private fun opDirectIndirectLong() = FullAddress(
-        memory.readAddress(
+        readLong(
             BankNo(0),
             ShortAddress(fetch() + rD)
         )
@@ -449,7 +451,7 @@ class Processor(
     private fun opDirectIndirect() = FullAddress(
         BankNo(rDBR.value),
         ShortAddress(
-            memory.readShort(
+            readWord(
                 BankNo(
                     0
                 ), shortAddress(fetch() + rD)
@@ -480,7 +482,7 @@ class Processor(
     private fun opStackRelativeIndirectIndexed() = FullAddress(
         BankNo(rDBR.value),
         shortAddress(
-            memory.readShort(
+            readWord(
                 BankNo(
                     0
                 ), shortAddress(fetch() + rS)
@@ -517,7 +519,7 @@ class Processor(
             rPBR.value = 0
         }
 
-        rPC.value = memory.readShort(BankNo(0), interruptAddress)
+        rPC.value = readWord(BankNo(0), interruptAddress)
     }
 
     /** Test and Set Bit */
@@ -1161,22 +1163,22 @@ class Processor(
 
     /** store zero */
     private fun instSTZ(address: FullAddress) {
-        memory.writeFor(rA, address, 0)
+        writeFor(rA, address, 0)
     }
 
     /** Store A at given address */
     private fun instSTA(address: FullAddress) {
-        memory.writeFor(rA, address)
+        writeFor(rA, address)
     }
 
     /** Store Y at given address */
     private fun instSTY(address: FullAddress) {
-        memory.writeFor(rY, address)
+        writeFor(rY, address)
     }
 
     /** Store X at given address */
     private fun instSTX(address: FullAddress) {
-        memory.writeFor(rX, address)
+        writeFor(rX, address)
     }
 
     /** Block move positive */
@@ -1185,16 +1187,16 @@ class Processor(
         val bankDest = BankNo(fetch())
 
         while (!rA.zero) {
-            memory.writeByte(bankDest, ShortAddress(rY.get()),
-                memory.readByte(bankSource, ShortAddress(rX.get())))
+            writeByte(bankDest, ShortAddress(rY.get()),
+                readByte(bankSource, ShortAddress(rX.get())))
 
             rA.dec()
             rX.dec()
             rY.dec()
         }
 
-        memory.writeByte(bankDest, ShortAddress(rY.get()),
-            memory.readByte(bankSource, ShortAddress(rX.get())))
+        writeByte(bankDest, ShortAddress(rY.get()),
+            readByte(bankSource, ShortAddress(rX.get())))
 
         rA.dec()
         rX.dec()
@@ -1207,16 +1209,16 @@ class Processor(
         val bankDest = BankNo(fetch())
 
         while (!rA.zero) {
-            memory.writeByte(bankDest, ShortAddress(rY.get()),
-                memory.readByte(bankSource, ShortAddress(rX.get())))
+            writeByte(bankDest, ShortAddress(rY.get()),
+                readByte(bankSource, ShortAddress(rX.get())))
 
             rA.dec()
             rX.inc()
             rY.inc()
         }
 
-        memory.writeByte(bankDest, ShortAddress(rY.get()),
-            memory.readByte(bankSource, ShortAddress(rX.get())))
+        writeByte(bankDest, ShortAddress(rY.get()),
+            readByte(bankSource, ShortAddress(rX.get())))
 
         rA.dec()
         rX.inc()
@@ -1242,6 +1244,36 @@ class Processor(
     /** operation reserved for future use */
     private fun instWDM() {
     }
+
+    private fun readByte(bank: BankNo, address: ShortAddress): Int {
+        return readByte(bank, address)
+    }
+
+    private fun readWord(bank: BankNo, address: ShortAddress)
+        = readByte(bank, address) + (readByte(bank, shortAddress(address.shortAddress + 1)) shl 8)
+
+    private fun readLong(bank: BankNo, address: ShortAddress)
+        = readWord(bank, address) + (readByte(bank, shortAddress(address.shortAddress + 2)) shl 16)
+
+    private fun writeByte(bank: BankNo, address: ShortAddress, value: Int) {
+        writeByte(bank, address, value)
+    }
+
+    private fun readFor(register: DiffSizeRegister, address: FullAddress)
+    = if(register._8bitMode) readByte(address.bankNo, address.shortAaddress) else readWord(address.bankNo, address.shortAaddress)
+
+    private fun writeWord(bank: BankNo, address: ShortAddress, value: Int) {
+        writeByte(bank, address, value)
+        writeByte(bank, shortAddress(address.shortAddress + 1), value shr 8)
+    }
+
+    private fun writeLong(bank: BankNo, address: ShortAddress, value: Int) {
+        writeWord(bank, address, value)
+        writeByte(bank, shortAddress(address.shortAddress + 2), value shr 16)
+    }
+
+    private fun writeFor(register: DiffSizeRegister, address: FullAddress, value: Int = register.value)
+            = if (register._8bitMode) writeByte(address.bankNo, address.shortAaddress, value) else writeWord(address.bankNo, address.shortAaddress, value)
 
     /**
      * the accumulator is a special 16-bit-register.
@@ -1355,7 +1387,7 @@ class Processor(
         }
 
         fun pushByte(value: Int) {
-            memory.writeByte(
+            writeByte(
                 BankNo(0),
                 ShortAddress(this.value), value)
             dec()
@@ -1368,7 +1400,7 @@ class Processor(
 
         fun pullByte(): Int {
             inc()
-            return memory.readByte(
+            return readByte(
                 BankNo(0),
                 ShortAddress(value)
             )
@@ -1405,28 +1437,8 @@ class Processor(
             ShortAddress(0xFFFE)
         private val EMULATION_BRK_VECTOR_ADDRESS: ShortAddress = IRQ_VECTOR_ADDRESS
 
-        private inline operator fun Int.plus(s: StackPointer) = if(s._8bitMode) this + s.value and 0xFF else this + s.value
-        private inline operator fun Int.plus(a: Accumulator) = if (a._8bitMode) this + a.value and 0xFF else this + a.value
-        private inline operator fun Int.plus(r: Register) = this + r.value
-
-        private fun Memory.readFor(register: DiffSizeRegister, address: FullAddress) = if(register._8bitMode) readByte(address.bankNo, address.shortAaddress) else readShort(address.bankNo, address.shortAaddress)
-        private fun Memory.writeFor(register: DiffSizeRegister, address: FullAddress, value: Int = register.value) = if (register._8bitMode) writeByte(address.bankNo, address.shortAaddress, value) else writeShort(address.bankNo, address.shortAaddress, value)
-
-        private fun Memory.read(bank: BankNo, address: ShortAddress, byte: Boolean) = if (byte) readByte(bank, address) else readShort(bank, address)
-        private fun Memory.read(address: FullAddress, byte: Boolean) = if (byte) readByte(address.bankNo, address.shortAaddress) else readShort(address.bankNo, address.shortAaddress)
-        private fun Memory.readShort(bank: BankNo, address: ShortAddress): Int {
-            return readByte(bank, address) + (readByte(bank,
-                shortAddress(address.shortAddress + 1)
-            ) shl 8)
-        }
-        private fun Memory.readAddress(bank: BankNo, address: ShortAddress): Int {
-            return readShort(bank, address) + (readByte(bank,
-                shortAddress(address.shortAddress + 2)
-            ) shl 16)
-        }
-        private fun Memory.writeShort(bank: BankNo, address: ShortAddress, value: Int) {
-            writeByte(bank, address, value and 0xFF)
-            writeByte(bank, ShortAddress(address.shortAddress + 1), value and 0xFF00 shr 8)
-        }
+        private operator fun Int.plus(s: StackPointer) = if(s._8bitMode) this + s.value and 0xFF else this + s.value
+        private operator fun Int.plus(a: Accumulator) = if (a._8bitMode) this + a.value and 0xFF else this + a.value
+        private operator fun Int.plus(r: Register) = this + r.value
     }
 }
