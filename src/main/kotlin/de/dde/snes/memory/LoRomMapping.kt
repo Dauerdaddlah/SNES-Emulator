@@ -23,8 +23,3 @@ class LoRomRAMMapping : MemoryMappingArray() {
         return (bank.bankNo and 0x0F * Memory.BANK_SIZE / 2) + address.shortAddress
     }
 }
-
-// 0xF0 - 1111 0000
-// 0xF5 - 1111 0101
-// 0x70 - 0111 0000
-// 0x79 - 0111 1001
