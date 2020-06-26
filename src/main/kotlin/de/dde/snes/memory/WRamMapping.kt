@@ -5,7 +5,7 @@ class WRamMapping : MemoryMappingArray() {
         return memory.wram
     }
 
-    override fun index(bank: BankNo, address: ShortAddress): Int {
-        return if (bank.bankNo == 0xFF) Memory.BANK_SIZE + address.shortAddress else address.shortAddress
+    override fun index(bank: Bank, address: ShortAddress): Int {
+        return if (bank == 0xFF) Memory.BANK_SIZE + address.shortAddress else address.shortAddress
     }
 }

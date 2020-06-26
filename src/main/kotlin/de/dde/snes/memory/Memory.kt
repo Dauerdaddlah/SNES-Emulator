@@ -69,16 +69,18 @@ class Memory(
     private fun setMapping(fromBank: Int, toBank: Int, fromAddress: Int, toAddress: Int, mapping: MemoryMapping) {
         for (b in fromBank..toBank) {
             for (a in fromAddress..toAddress step PAGE_SIZE) {
-                val i = mappingIndex(b, a)
                 this.mapping[mappingIndex(b, a)] = mapping
             }
         }
     }
 
-    private inline fun mappingIndex(bank: Int, address: Int) = bank shl 4 + address
+    private fun mappingIndex(bank: Int, address: Int) = bank shl 4 + address
 
-    fun readByte(bank: BankNo, address: ShortAddress): Int {
-        val b = mapping[mappingIndex(bank.bankNo, address.shortAddress)].readByte(this, bank, address)
+    fun readByte(bank: Bank, address: ShortAddress): Int {
+        assert(bank in 0x0..0xFF)
+        assert(address in 0x0..0xFFFF)
+
+        val b = mapping[mappingIndex(bank, address.shortAddress)].readByte(this, bank, address)
 
         if (b != -1) {
             mdr = b.toByte()
@@ -87,19 +89,23 @@ class Memory(
         return mdr.toInt() and 0xFF
     }
 
-    fun writeByte(bank: BankNo, address: ShortAddress, value: Int) {
+    // TODO bank and address must be valid
+    fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
+        assert(bank in 0x0..0xFF)
+        assert(address in 0x0..0xFFFF)
+
         mdr = value.toByte()
 
-        mapping[mappingIndex(bank.bankNo, address.shortAddress)].writeByte(this, bank, address, value)
+        mapping[mappingIndex(bank, address.shortAddress)].writeByte(this, bank, address, value)
     }
 
 
     inner class MemoryMappingOpenPort : MemoryMapping {
-        override fun readByte(memory: Memory, bank: BankNo, address: ShortAddress): Int {
+        override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
             return mdr.toInt()
         }
 
-        override fun writeByte(memory: Memory, bank: BankNo, address: ShortAddress, value: Int) {
+        override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
             mdr = value.toByte()
         }
 
@@ -115,27 +121,18 @@ class Memory(
     }
 }
 
-inline fun bankNo(bankNo: Int): BankNo =
-    BankNo(bankNo and 0xFF)
-inline fun shortAddress(shortAddress: Int): ShortAddress =
-    ShortAddress(shortAddress and 0xFFFF)
-inline fun fullAddress(fullAddress: Int): FullAddress =
-    FullAddress(fullAddress and 0xFFFFFF)
+typealias Bank = Int
+typealias ShortAddress = Int
+typealias FullAddress = Int
 
-inline class BankNo(val bankNo: Int)
+fun bank(bankNo: Int): Bank
+    = bankNo and 0xFF
+fun shortAddress(shortAddress: Int): ShortAddress
+    = shortAddress and 0xFFFF
+fun fullAddress(bank: Bank, address: ShortAddress)
+    = (bank shl 16) or address
+fun fullAddress(fullAddress: Int): FullAddress
+    = fullAddress and 0xFFFFFF
 
-inline class ShortAddress(val shortAddress: Int)
-
-inline class FullAddress(val fullAddress: Int) {
-
-    constructor(bankNo: BankNo, shortAddress: ShortAddress) : this((bankNo.bankNo shl 16) + (shortAddress.shortAddress))
-
-    val bankNo: BankNo
-        get() = bankNo(
-            fullAddress ushr 16
-        )
-    val shortAaddress: ShortAddress
-        get() = shortAddress(
-            fullAddress
-        )
-}
+val FullAddress.bank get() = (this shr 16) and 0xFF
+val FullAddress.shortAddress get() = this and 0xFFFF

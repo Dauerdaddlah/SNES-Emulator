@@ -1,12 +1,18 @@
 package de.dde.snes
 
-import de.dde.snes.memory.BankNo
 import de.dde.snes.memory.Memory
-import de.dde.snes.memory.ShortAddress
+import de.dde.snes.processor.Processor
 import snes.SNES
 import java.nio.file.Paths
+import java.util.logging.Level
+import java.util.logging.Logger
 
 fun main() {
+    Logger.getLogger("").let { l ->
+        l.level = Level.FINEST
+        l.handlers.forEach { it.level = Level.FINEST }
+    }
+
     val fileName = "Legend of Zelda, The - A Link to the Past (U) [!].smc"
     //val fileName = "Sim City (U) [!].smc"
     val u = SNES::class.java.classLoader.getResource(fileName) ?: error("file not found")
@@ -18,8 +24,19 @@ fun main() {
 
     val memory = Memory(c)
 
-    println(memory.readByte(BankNo(0), ShortAddress(0xFFFC)) + (memory.readByte(BankNo(0), ShortAddress(0xFFFD)) shl 8))
+    println((memory.readByte(0, 0xFFFC) or (memory.readByte(0, 0xFFFD) shl 8)).toString(16))
 
+    val processor = Processor(memory)
+
+    var i = 0
+    try {
+        while (true) {
+            i++
+            processor.executeNextInstruction()
+        }
+    } finally {
+        println("Instructions: $i")
+    }
     //println(m.byte(memory, 0, v and 0xF000 ushr 12, v and 0xFFF).toString(16))
 }
 

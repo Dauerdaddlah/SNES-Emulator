@@ -1,11 +1,11 @@
 package de.dde.snes.memory
 
 class PpuMapping : MemoryMapping {
-    override fun readByte(memory: Memory, bank: BankNo, address: ShortAddress): Int {
+    override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
         error("ppu mapping missing")
     }
 
-    override fun writeByte(memory: Memory, bank: BankNo, address: ShortAddress, value: Int) {
+    override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
         error("ppu mapping missing")
     }
 }
