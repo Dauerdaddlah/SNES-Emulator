@@ -6,6 +6,7 @@ import snes.SNES
 import java.nio.file.Paths
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.system.measureTimeMillis
 
 fun main() {
     Logger.getLogger("").let { l ->
@@ -27,16 +28,32 @@ fun main() {
     println((memory.readByte(0, 0xFFFC) or (memory.readByte(0, 0xFFFD) shl 8)).toString(16))
 
     val processor = Processor(memory)
+    processor.reset()
+
 
     var i = 0
-    try {
+    var cc = 0
+    var c2 = 0
+    val t = measureTimeMillis {
         while (true) {
-            i++
+            cc++
+            if (cc == 1000000) {
+                c2++
+                cc = 0
+                println("${c2}")
+            }
+            //print("$it ")
             processor.executeNextInstruction()
+
+            if (processor.waitForInterrupt) {
+                processor.NMI()
+                i++
+                break
+            }
         }
-    } finally {
-        println("Instructions: $i")
     }
+
+    println("$t - $i")
     //println(m.byte(memory, 0, v and 0xF000 ushr 12, v and 0xFFF).toString(16))
 }
 

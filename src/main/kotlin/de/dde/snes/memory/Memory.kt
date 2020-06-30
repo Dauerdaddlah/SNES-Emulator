@@ -23,13 +23,11 @@ class Memory(
         setMapping(0x00, 0x3F, 0x0000, 0x1FFF, wramMapping)
         setMapping(0x80, 0xBF, 0x0000, 0x1FFF, wramMapping)
 
-        val cpuMapping = CpuMapping()
-        setMapping(0x00, 0x3F, 0x2100, 0x21FF, cpuMapping)
-        setMapping(0x80, 0xBF, 0x2100, 0x21FF, cpuMapping)
-
-        val ppuMapping = PpuMapping()
-        setMapping(0x00, 0x3F, 0x4200, 0x43FF, ppuMapping)
-        setMapping(0x80, 0xBF, 0x4200, 0x43FF, ppuMapping)
+        val hardwareMapping = HardwareMapping()
+        setMapping(0x00, 0x3F, 0x2100, 0x21FF, hardwareMapping)
+        setMapping(0x80, 0xBF, 0x2100, 0x21FF, hardwareMapping)
+        setMapping(0x00, 0x3F, 0x4200, 0x43FF, hardwareMapping)
+        setMapping(0x80, 0xBF, 0x4200, 0x43FF, hardwareMapping)
 
         //setAccess(0x00, 0x3F, 0x4000, 0x4FFF, joypadAccess)
         //setAccess(0x80, 0xBF, 0x4000, 0x4FFF, joypadAccess)
@@ -74,7 +72,7 @@ class Memory(
         }
     }
 
-    private fun mappingIndex(bank: Int, address: Int) = bank shl 4 + address
+    private fun mappingIndex(bank: Int, address: Int) = (bank shl 4) or (address shr 12)
 
     fun readByte(bank: Bank, address: ShortAddress): Int {
         assert(bank in 0x0..0xFF)
