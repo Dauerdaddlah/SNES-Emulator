@@ -2,7 +2,6 @@ package de.dde.snes
 
 import de.dde.snes.memory.Memory
 import de.dde.snes.processor.Processor
-import snes.SNES
 import java.nio.file.Paths
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -23,13 +22,11 @@ fun main() {
 
     println(c.header)
 
-    val memory = Memory(c)
+    val snes = SNES(c)
 
-    println((memory.readByte(0, 0xFFFC) or (memory.readByte(0, 0xFFFD) shl 8)).toString(16))
+    val processor = snes.processor
 
-    val processor = Processor(memory)
     processor.reset()
-
 
     var i = 0
     var cc = 0

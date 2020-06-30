@@ -1,12 +1,12 @@
 package de.dde.snes.memory
 
-import de.dde.snes.Cartridge
 import de.dde.snes.MapMode
+import de.dde.snes.SNES
 
 class Memory(
-    val cartridge: Cartridge,
+    val snes: SNES,
     val wram: ByteArray = ByteArray(_1K * 128), // 128 k
-    val sram: ByteArray = ByteArray(_1K * cartridge.header.sramSizeKb.toInt()) // max 512 k
+    val sram: ByteArray = ByteArray(_1K * snes.cartridge.header.sramSizeKb.toInt()) // max 512 k
 ) {
     // 64k vram
     // 512b cgram - 256 palette-entries each 1w or 16b
@@ -32,7 +32,7 @@ class Memory(
         //setAccess(0x00, 0x3F, 0x4000, 0x4FFF, joypadAccess)
         //setAccess(0x80, 0xBF, 0x4000, 0x4FFF, joypadAccess)
 
-        when (cartridge.header.mapMode) {
+        when (snes.cartridge.header.mapMode) {
             MapMode.LOROM -> {
                 val romMapping = LoRomROMMapping()
                 setMapping(0x00, 0x7D, 0x8000, 0xFFFF, romMapping)
@@ -48,7 +48,7 @@ class Memory(
             MapMode.FAST_HIROM,
             MapMode.EX_LOROM,
             MapMode.EX_HIROM,
-            MapMode.UNKNOWN -> error("Mode ${cartridge.header.mapMode}(${cartridge.header.mapModeRaw}) not supported yet")
+            MapMode.UNKNOWN -> error("Mode ${snes.cartridge.header.mapMode}(${snes.cartridge.header.mapModeRaw}) not supported yet")
         }
 
         // HiROM

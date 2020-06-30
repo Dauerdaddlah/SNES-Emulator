@@ -2,7 +2,7 @@ package de.dde.snes.memory
 
 class LoRomROMMapping : MemoryMappingArray() {
     override fun array(memory: Memory): ByteArray {
-        return memory.cartridge.data
+        return memory.snes.cartridge.data
     }
 
     override fun index(bank: Bank, address: ShortAddress): Int {
