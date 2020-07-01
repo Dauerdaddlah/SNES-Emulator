@@ -1,6 +1,7 @@
 package de.dde.snes
 
 import de.dde.snes.apu.APU
+import de.dde.snes.cartridge.Cartridge
 import de.dde.snes.memory.Memory
 import de.dde.snes.processor.Processor
 

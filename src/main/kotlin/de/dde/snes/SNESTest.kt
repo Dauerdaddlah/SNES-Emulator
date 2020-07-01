@@ -1,7 +1,6 @@
 package de.dde.snes
 
-import de.dde.snes.memory.Memory
-import de.dde.snes.processor.Processor
+import de.dde.snes.cartridge.Cartridge
 import java.nio.file.Paths
 import java.util.logging.Level
 import java.util.logging.Logger

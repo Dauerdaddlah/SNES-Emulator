@@ -1,4 +1,4 @@
-package de.dde.snes
+package de.dde.snes.cartridge
 
 import de.dde.snes.memory.Memory
 import java.nio.ByteBuffer
@@ -91,7 +91,24 @@ class Cartridge(
         val complementCheck = buffer.short
         val checksum = buffer.short
 
-        return CartridgeHeader(maker, game, fixed, exRamSize, specVersion, cTypeSub, name, mapMode, cType, romSize, ramSize, destination, fixed2, maskRomVersion, complementCheck, checksum)
+        return CartridgeHeader(
+            maker,
+            game,
+            fixed,
+            exRamSize,
+            specVersion,
+            cTypeSub,
+            name,
+            mapMode,
+            cType,
+            romSize,
+            ramSize,
+            destination,
+            fixed2,
+            maskRomVersion,
+            complementCheck,
+            checksum
+        )
     }
 
     companion object {

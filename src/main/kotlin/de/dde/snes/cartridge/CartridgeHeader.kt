@@ -1,4 +1,4 @@
-package de.dde.snes
+package de.dde.snes.cartridge
 
 import kotlin.math.pow
 
@@ -21,10 +21,18 @@ data class CartridgeHeader(
     val complementCheck: Short,
     val checksum: Short,
 
-    val exRamSize: ExRamSize = ExRamSize.byCode(exRamSizeRaw),
-    val mapMode: MapMode = MapMode.byCode(mapModeRaw),
-    val romType: RomType = RomType.byCode(cTypeRaw),
-    val destination: Destination = Destination.byCode(destinationRaw)
+    val exRamSize: ExRamSize = ExRamSize.byCode(
+        exRamSizeRaw
+    ),
+    val mapMode: MapMode = MapMode.byCode(
+        mapModeRaw
+    ),
+    val romType: RomType = RomType.byCode(
+        cTypeRaw
+    ),
+    val destination: Destination = Destination.byCode(
+        destinationRaw
+    )
 ) {
     val romSizeKb = 2.0.pow(romSize.toDouble())
     val sramSizeKb = if (sramSize == 0.toByte()) 0.0 else 2.0.pow(sramSize.toDouble())

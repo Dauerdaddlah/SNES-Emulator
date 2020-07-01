@@ -1,6 +1,5 @@
 package de.dde.snes.processor
 
-import de.dde.snes.ProcessorMode
 import de.dde.snes.memory.*
 
 

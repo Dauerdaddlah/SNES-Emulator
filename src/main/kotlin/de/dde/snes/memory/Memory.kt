@@ -1,7 +1,7 @@
 package de.dde.snes.memory
 
-import de.dde.snes.Cartridge
-import de.dde.snes.MapMode
+import de.dde.snes.cartridge.Cartridge
+import de.dde.snes.cartridge.MapMode
 import de.dde.snes.SNES
 
 class Memory(
