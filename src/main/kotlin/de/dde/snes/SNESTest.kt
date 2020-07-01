@@ -22,7 +22,10 @@ fun main() {
 
     println(c.header)
 
-    val snes = SNES(c)
+    val snes = SNES()
+    snes.reset()
+
+    snes.insertCartridge(c)
 
     val processor = snes.processor
 

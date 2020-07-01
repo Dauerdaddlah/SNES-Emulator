@@ -1,5 +1,6 @@
 package de.dde.snes.apu
 
+import de.dde.snes.SNES
 import de.dde.snes.memory.Bank
 import de.dde.snes.memory.Memory
 import de.dde.snes.memory.MemoryMapping
@@ -15,8 +16,16 @@ class APU : MemoryMapping {
     var transferActive = false
     var initialized = false
 
+    fun reset() {
+        transferActive = false
+        initialized = false
+        status = 0xAA
+        address = 0xBB
+        address = 0x0000
+    }
+
     // TODO this is just the implementation for a deactivated APU
-    override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
         return when (address and 0x3) {
             0x0 -> {
                 if (!initialized) {
@@ -31,7 +40,7 @@ class APU : MemoryMapping {
         }
     }
 
-    override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
         when (address and 0x3) {
             0x0 -> {
                 if (!initialized) {

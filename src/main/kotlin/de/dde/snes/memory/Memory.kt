@@ -1,24 +1,34 @@
 package de.dde.snes.memory
 
+import de.dde.snes.Cartridge
 import de.dde.snes.MapMode
 import de.dde.snes.SNES
 
 class Memory(
-    val snes: SNES,
-    val wram: ByteArray = ByteArray(_1K * 128), // 128 k
-    val sram: ByteArray = ByteArray(_1K * snes.cartridge.header.sramSizeKb.toInt()) // max 512 k
+    private val snes: SNES
 ) {
     // 64k vram
     // 512b cgram - 256 palette-entries each 1w or 16b
     // 544b oam - 128 sprites in 2 tables - table 1 has 4 byte per sprite (512b) - table 2 has 2 bit per sprite (32b)
-    
+
+    val wram: ByteArray = ByteArray(128 * _1K)
+    var sram: ByteArray = ByteArray(0)
+        private set
+
     /** Memory Data Register - holds the last value read or written. Every time, an invalid address is requested, this value will be used */
     private var mdr: Byte = 0
 
     private val mapping = with (MemoryMappingOpenPort()) { Array<MemoryMapping>(ADDRESS_SPACE / PAGE_SIZE) { this } }
 
-    init {
-        val wramMapping = WRamMapping()
+    fun reset() {
+        sram = ByteArray(0)
+        wram.fill(0)
+    }
+
+    fun initializeFor(cartridge: Cartridge) {
+        sram = ByteArray(_1K * cartridge.header.sramSizeKb.toInt()) // max 512 k
+
+        val wramMapping = WRamMapping(wram)
         setMapping(0x7E, 0x7F, 0x0000, 0xFFFF, wramMapping)
         setMapping(0x00, 0x3F, 0x0000, 0x1FFF, wramMapping)
         setMapping(0x80, 0xBF, 0x0000, 0x1FFF, wramMapping)
@@ -32,13 +42,13 @@ class Memory(
         //setAccess(0x00, 0x3F, 0x4000, 0x4FFF, joypadAccess)
         //setAccess(0x80, 0xBF, 0x4000, 0x4FFF, joypadAccess)
 
-        when (snes.cartridge.header.mapMode) {
+        when (cartridge.header.mapMode) {
             MapMode.LOROM -> {
-                val romMapping = LoRomROMMapping()
+                val romMapping = LoRomROMMapping(cartridge.data)
                 setMapping(0x00, 0x7D, 0x8000, 0xFFFF, romMapping)
                 setMapping(0x80, 0xFF, 0x8000, 0xFFFF, romMapping)
 
-                val ramMapping = LoRomRAMMapping()
+                val ramMapping = LoRomRAMMapping(sram)
                 setMapping(0x70, 0x7D, 0x0000, 0x7FFF, ramMapping)
                 setMapping(0xF0, 0xFF, 0x0000, 0x7FFF, ramMapping)
             }
@@ -48,7 +58,7 @@ class Memory(
             MapMode.FAST_HIROM,
             MapMode.EX_LOROM,
             MapMode.EX_HIROM,
-            MapMode.UNKNOWN -> error("Mode ${snes.cartridge.header.mapMode}(${snes.cartridge.header.mapModeRaw}) not supported yet")
+            MapMode.UNKNOWN -> error("Mode ${cartridge.header.mapMode}(${cartridge.header.mapModeRaw}) not supported yet")
         }
 
         // HiROM
@@ -78,7 +88,7 @@ class Memory(
         assert(bank in 0x0..0xFF)
         assert(address in 0x0..0xFFFF)
 
-        val b = mapping[mappingIndex(bank, address.shortAddress)].readByte(this, bank, address)
+        val b = mapping[mappingIndex(bank, address.shortAddress)].readByte(snes, bank, address)
 
         if (b != -1) {
             mdr = b.toByte()
@@ -94,16 +104,16 @@ class Memory(
 
         mdr = value.toByte()
 
-        mapping[mappingIndex(bank, address.shortAddress)].writeByte(this, bank, address, value)
+        mapping[mappingIndex(bank, address.shortAddress)].writeByte(snes, bank, address, value)
     }
 
 
     inner class MemoryMappingOpenPort : MemoryMapping {
-        override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
+        override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
             return mdr.toInt()
         }
 
-        override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
+        override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
             mdr = value.toByte()
         }
 

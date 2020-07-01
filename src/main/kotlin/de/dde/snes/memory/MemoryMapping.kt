@@ -1,21 +1,23 @@
 package de.dde.snes.memory
 
+import de.dde.snes.SNES
+
 interface MemoryMapping {
-    fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int
-    fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int)
+    fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int
+    fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int)
 }
 
-abstract class MemoryMappingArray : MemoryMapping {
-    override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
+abstract class MemoryMappingArray(
+    private val array: ByteArray
+) : MemoryMapping {
+    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
         val i = index(bank, address)
-        val a = array(memory)
-        return a[i.rem(a.size)].toInt()
+        return array[i.rem(array.size)].toInt()
     }
 
-    override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
-        array(memory)[index(bank, address)] = value.toByte()
+    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+        array[index(bank, address)] = value.toByte()
     }
 
-    abstract fun array(memory: Memory): ByteArray
     abstract fun index(bank: Bank, address: ShortAddress): Int
 }

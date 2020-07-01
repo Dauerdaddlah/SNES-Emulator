@@ -1,10 +1,12 @@
 package de.dde.snes.memory
 
+import de.dde.snes.SNES
+
 class HardwareMapping : MemoryMapping {
-    override fun readByte(memory: Memory, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
         // TODO
         return when (address) {
-            in 0x2140..0x2143 -> memory.snes.apu.readByte(memory, bank, address)
+            in 0x2140..0x2143 -> snes.apu.readByte(snes, bank, address)
 
             in 0x2100..0x2143,
             in 0x2180..0x2183,
@@ -22,10 +24,10 @@ class HardwareMapping : MemoryMapping {
         }
     }
 
-    override fun writeByte(memory: Memory, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
         // TODO
         when (address) {
-            in 0x2140..0x2143 -> memory.snes.apu.writeByte(memory, bank, address, value)
+            in 0x2140..0x2143 -> snes.apu.writeByte(snes, bank, address, value)
 
             in 0x2100..0x2143,
             in 0x2180..0x2183,
