@@ -3,6 +3,7 @@ package de.dde.snes.memory
 import de.dde.snes.cartridge.Cartridge
 import de.dde.snes.cartridge.MapMode
 import de.dde.snes.SNES
+import de.dde.snes.asByte
 
 class Memory(
     private val snes: SNES
@@ -10,25 +11,22 @@ class Memory(
     // 64k vram
     // 512b cgram - 256 palette-entries each 1w or 16b
     // 544b oam - 128 sprites in 2 tables - table 1 has 4 byte per sprite (512b) - table 2 has 2 bit per sprite (32b)
-
-    val wram: ByteArray = ByteArray(128 * _1K)
     var sram: ByteArray = ByteArray(0)
         private set
 
     /** Memory Data Register - holds the last value read or written. Every time, an invalid address is requested, this value will be used */
-    private var mdr: Byte = 0
+    private var mdr: Int = 0
 
     private val mapping = with (MemoryMappingOpenPort()) { Array<MemoryMapping>(ADDRESS_SPACE / PAGE_SIZE) { this } }
 
     fun reset() {
         sram = ByteArray(0)
-        wram.fill(0)
     }
 
     fun initializeFor(cartridge: Cartridge) {
         sram = ByteArray(_1K * cartridge.header.sramSizeKb.toInt()) // max 512 k
 
-        val wramMapping = WRamMapping(wram)
+        val wramMapping = WRamMapping(snes.cpu.wram.wram)
         setMapping(0x7E, 0x7F, 0x0000, 0xFFFF, wramMapping)
         setMapping(0x00, 0x3F, 0x0000, 0x1FFF, wramMapping)
         setMapping(0x80, 0xBF, 0x0000, 0x1FFF, wramMapping)
@@ -90,11 +88,11 @@ class Memory(
 
         val b = mapping[mappingIndex(bank, address.shortAddress)].readByte(snes, bank, address)
 
-        if (b != -1) {
-            mdr = b.toByte()
+        if (b != OPEN_BUS) {
+            mdr = b.asByte()
         }
 
-        return mdr.toInt() and 0xFF
+        return mdr
     }
 
     // TODO bank and address must be valid
@@ -102,7 +100,7 @@ class Memory(
         assert(bank in 0x0..0xFF)
         assert(address in 0x0..0xFFFF)
 
-        mdr = value.toByte()
+        mdr = value.asByte()
 
         mapping[mappingIndex(bank, address.shortAddress)].writeByte(snes, bank, address, value)
     }
@@ -110,22 +108,23 @@ class Memory(
 
     inner class MemoryMappingOpenPort : MemoryMapping {
         override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
-            return mdr.toInt()
+            return mdr
         }
 
         override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
-            mdr = value.toByte()
         }
 
     }
 
     companion object {
-        private const val _1K = 0x400
-        private const val _1M = _1K * _1K
+        const val _1K = 0x400
+        const val _1M = _1K * _1K
 
         const val ADDRESS_SPACE = 0x1000000
         const val PAGE_SIZE = 0x1000
         const val BANK_SIZE = 0x10000
+
+        const val OPEN_BUS = -1
     }
 }
 
