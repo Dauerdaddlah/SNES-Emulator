@@ -43,14 +43,28 @@ class Memory(
         when (cartridge.header.mapMode) {
             MapMode.LOROM -> {
                 val romMapping = LoRomROMMapping(cartridge.data)
-                setMapping(0x00, 0x7D, 0x8000, 0xFFFF, romMapping)
-                setMapping(0x80, 0xFF, 0x8000, 0xFFFF, romMapping)
-
                 val ramMapping = LoRomRAMMapping(sram)
-                setMapping(0x70, 0x7D, 0x0000, 0x7FFF, ramMapping)
-                setMapping(0xF0, 0xFF, 0x0000, 0x7FFF, ramMapping)
+
+                setMapping(0x00, 0x7D, 0x8000, 0xFFFF, romMapping) // upper right quarter complete without wram
+                setMapping(0x40, 0x6F, 0x0000, 0x7FFF, romMapping) // right side, lower half, left quarter without sram
+                setMapping(0x70, 0x7D, 0x0000, 0x7FFF, ramMapping) // right side, lower half, left quarter without wram
+
+                setMapping(0x80, 0xFF, 0x8000, 0xFFFF, romMapping) // upper left quarter complete
+                setMapping(0xC0, 0xEF, 0x0000, 0x7FFF, romMapping) // left side, lower half, left quarter without sram
+                setMapping(0xF0, 0xFF, 0x0000, 0x7FFF, ramMapping) // left side, lower hald, left side
             }
-            MapMode.HIROM -> TODO()
+            MapMode.HIROM -> {
+                val romMapping = HiRomROMMapping(cartridge.data)
+                val ramMapping = HiRomRAMMapping(sram)
+
+                setMapping(0x00, 0x3F, 0x8000, 0xFFFF, romMapping) // right side, right upper quarter
+                setMapping(0x00, 0x3F, 0x6000, 0x7FFF, ramMapping) // right side, ram in lower right quarter
+                setMapping(0x40, 0x7D, 0x0000, 0xFFFF, romMapping) // right side, left half complete
+
+                setMapping(0x80, 0xBF, 0x8000, 0xFFFF, romMapping) // left side, right upper quarter
+                setMapping(0x80, 0xBF, 0x6000, 0x7FFF, ramMapping) // left side ram in lower right quarter
+                setMapping(0xC0, 0xFF, 0x0000, 0xFFFF, romMapping) // left side, left half complete
+            }
             MapMode.SA1ROM,
             MapMode.FAST_LOROM,
             MapMode.FAST_HIROM,
