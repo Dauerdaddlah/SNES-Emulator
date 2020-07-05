@@ -1,6 +1,7 @@
 package de.dde.snes
 
 import de.dde.snes.cartridge.Cartridge
+import de.dde.snes.controller.Joypad
 import java.nio.file.Paths
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -22,6 +23,7 @@ fun main() {
     println(c.header)
 
     val snes = SNES()
+    snes.controllers.plugIn(Joypad(), 1)
     snes.reset()
 
     snes.insertCartridge(c)

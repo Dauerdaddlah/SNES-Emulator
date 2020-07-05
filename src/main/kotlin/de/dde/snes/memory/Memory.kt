@@ -31,7 +31,7 @@ class Memory(
         setMapping(0x00, 0x3F, 0x0000, 0x1FFF, wramMapping)
         setMapping(0x80, 0xBF, 0x0000, 0x1FFF, wramMapping)
 
-        val hardwareMapping = HardwareMapping()
+        val hardwareMapping = HardwareMapping(false)
         setMapping(0x00, 0x3F, 0x2100, 0x21FF, hardwareMapping)
         setMapping(0x80, 0xBF, 0x2100, 0x21FF, hardwareMapping)
         setMapping(0x00, 0x3F, 0x4200, 0x43FF, hardwareMapping)
@@ -95,7 +95,6 @@ class Memory(
         return mdr
     }
 
-    // TODO bank and address must be valid
     fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         assert(bank in 0x0..0xFF)
         assert(address in 0x0..0xFFFF)

@@ -1,11 +1,20 @@
 package de.dde.snes.processor
 
+import de.dde.snes.SNES
 import de.dde.snes.memory.*
+import java.io.PrintWriter
+import java.nio.file.Files
+import java.nio.file.Paths
 
 
 class Processor(
-    val memory: Memory
-) {
+    val snes: SNES
+) : MemoryMapping {
+    val memory = snes.memory
+
+    var irqFlag = false
+    var nmiFlag = false
+
     // TODO consider cycles for everything else than memory-access
     var mode = ProcessorMode.EMULATION
 
@@ -37,6 +46,8 @@ class Processor(
 
     var cycles = 0
         private set
+    var instructionCount = 0
+        private set
 
     fun reset() {
         mode = ProcessorMode.EMULATION
@@ -52,6 +63,7 @@ class Processor(
 
         waitForInterrupt = false
         cycles = 0
+        instructionCount = 0
 
         rPC.value = readWord(
             rDBR.value,
@@ -63,10 +75,13 @@ class Processor(
         if (waitForInterrupt) {
             return
         }
+
         val i = fetch()
         val inst = instructions[i]
 
         //println(inst)
+
+        instructionCount++
 
         inst.execute()
     }
@@ -86,7 +101,13 @@ class Processor(
         = fetchShort() or (fetch() shl 16)
 
     fun NMI() {
+        nmiFlag = true
         interrupt(NMI_VECTOR_ADDRESS)
+    }
+
+    fun IRQ() {
+        irqFlag = true
+        interrupt(IRQ_VECTOR_ADDRESS)
     }
 
     /** break interrupt */
@@ -826,6 +847,7 @@ class Processor(
 
     /** Wait for interrupt */
     private fun instWAI() {
+        println("WAI")
         waitForInterrupt = true
     }
 
@@ -878,7 +900,7 @@ class Processor(
     private fun getCyclesForAddress(bank: Bank, address: ShortAddress): Int {
         // TODO copied from snes9x
         if (bank and 0x40 != 0 || address and 0x8000 != 0) {
-            return if (bank and 0x80 != 0) FastROMSpeed else SLOW_ONE_CYCLE
+            return if (bank and 0x80 != 0) FastROMSpeed(snes) else SLOW_ONE_CYCLE
         }
 
         if (address + 0x6000 and 0x4000 != 0) return SLOW_ONE_CYCLE
@@ -1575,6 +1597,30 @@ class Processor(
         operator fun get(index: Int) = instructions[index]
     }
 
+    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+        return when (address) {
+            0x4210 -> {
+                val chipVersion = 2
+                val r = chipVersion or (if (nmiFlag) 0x80 else 0)
+                nmiFlag = false
+                r
+            }
+            0x4211 -> {
+                val r = if (irqFlag) 0x80 else 0
+                irqFlag = false
+                r
+            }
+            else -> { println("READ PROCESSOR ${address.toString(16)}"); error("not implemented yet") }
+        }
+    }
+
+    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+        when (address) {
+            0x4210, 0x4211 -> {
+            }
+            else -> { println("WRITE ${value.toString(16)} to PROCESSOR ${address.toString(16)}"); error("not implemented yet")}
+        }
+    }
 
     companion object {
         private const val BIT_CARRY = 0x01
@@ -1603,6 +1649,6 @@ class Processor(
         private const val ONE_CYCLE = 6
         private const val TWO_CYCLES = 2 * ONE_CYCLE
         private const val SLOW_ONE_CYCLE = 8
-        private const val FastROMSpeed = ONE_CYCLE // TODO depending on bit 0 in 420D this is ONE_CYCLE or SLOW_ONE_CYCLE
+        private inline fun FastROMSpeed(snes: SNES) = if (snes.cpu.fastRom) ONE_CYCLE else SLOW_ONE_CYCLE
     }
 }

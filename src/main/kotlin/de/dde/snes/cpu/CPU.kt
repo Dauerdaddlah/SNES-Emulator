@@ -101,17 +101,12 @@ class CPU : MemoryMapping {
             0x420D -> {
                 Memory.OPEN_BUS
             }
-            0x4210 -> {
-                // TODO
-                -1
-            }
-            0x4211 -> {
-                // TODO
-                -1
-            }
             0x4212 -> {
-                // TODO
-                -1
+                var r = 0
+                if (snes.ppu.inVBlank) r = r or 0x80
+                if (snes.ppu.inHBlank) r = r or 0x40
+                if (snes.controllers.autoJoypadReadActive) r = r or 0x01
+                r
             }
             0x4214 -> {
                 quotient.lowByte()
@@ -195,16 +190,15 @@ class CPU : MemoryMapping {
             0x420C -> {
                 var i = 0x1
                 for (dma in snes.dma) {
-                    if (value.isBitSet(i)) {
-                        dma.startHdma()
-                    }
+                    dma.hdmaRequested = value.isBitSet(i)
                     i = i shl 1
                 }
             }
             0x420D -> {
                 fastRom = value.isBitSet(0x1)
             }
-            0x4210 -> {
+            0x4212,
+            in 0x4214..0x4217 -> {
             }
             else -> { println("WRITE ${value.toString(16)} to CPU ${address.toString(16)}"); error("not implemented yet")}
         }

@@ -24,6 +24,8 @@ class Background(val name: String) {
 
     var enableColorMath = false
 
+    var bigSize = true
+
     fun reset() {
         maskMainWindow = false
         maskSubWindow = false
@@ -47,5 +49,6 @@ class Background(val name: String) {
         vScroll = 0
 
         enableColorMath = false
+        bigSize = false
     }
 }

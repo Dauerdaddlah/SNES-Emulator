@@ -25,6 +25,32 @@ class PPU : MemoryMapping {
     var bgnOffsPrev1 = 0
     var bgnOffsPrev2 = 0
 
+    var countersLatched = false
+    var hoffset = 0
+    var hoffsetHigh = false
+    var voffset = 0
+    var voffsetHigh = false
+
+    var inVBlank = false
+        private set
+    var inHBlank = false
+        private set
+
+    var product = 0
+
+    var externalSync = false
+    var pseuoHire = false
+    var overscan = false
+    var objInterlace = false
+    var screenInterlace = false
+
+    var timeOver = false
+    var rangeOver = false
+    var interlaceField = false
+
+    var bg3Prio = false
+    var bgMode = 0
+
     val backgrounds = arrayOf(
         Background("BG1"),
         Background("BG2"),
@@ -42,6 +68,7 @@ class PPU : MemoryMapping {
         window1.reset()
         window2.reset()
         colorMath.reset()
+        mode7.reset()
 
         for (bg in backgrounds) {
             bg.reset()
@@ -55,9 +82,32 @@ class PPU : MemoryMapping {
         mosaicSize = 1
         bgnOffsPrev1 = 0
         bgnOffsPrev2 = 0
+        hoffset = 0
+        hoffsetHigh = false
+        voffset = 0
+        voffsetHigh = false
+        inVBlank = false
+        inHBlank = false
+        product = 0
+        externalSync = false
+        pseuoHire = false
+        overscan = false
+        objInterlace = false
+        screenInterlace = false
+        timeOver = false
+        rangeOver = false
+        interlaceField = false
+        countersLatched = false
+        bg3Prio = false
+        bgMode = 0
     }
 
-    // TODO check if access is possible at anay time or only in specific blanks
+    fun latchCounter() {
+        countersLatched = true
+        // TODO LATCH COUNTER
+    }
+
+    // TODO check if access is possible at any time or only in specific blanks
     override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
         return when (address) {
             0x2100 -> {
@@ -74,7 +124,7 @@ class PPU : MemoryMapping {
             0x2103 -> {
                 oam.address
             }
-            0x2104 -> {
+            0x2104, 0x2105 -> {
                 Memory.OPEN_BUS
             }
             0x2106 -> {
@@ -130,20 +180,26 @@ class PPU : MemoryMapping {
                 }
                 return r
             }
-            in 0x2130..0x2132 -> {
+            in 0x2130..0x2133 -> {
                 Memory.OPEN_BUS
             }
-            in 0x2134..0x2136 -> {
-                // TODO MULTIPLICATION
-                -1
+            0x2134 -> {
+                product.lowByte()
+            }
+            0x2135 -> {
+                product.highByte()
+            }
+            0x2136 -> {
+                product.longByte()
             }
             0x2137 -> {
-                // TODO latch HV Counter
+                if (snes.controllers.programmableIo2Line) {
+                    latchCounter()
+                }
                 Memory.OPEN_BUS
             }
             0x2138 -> {
-                // TODO OAM DATA READ
-                -1
+                oam.read()
             }
             0x2139 -> {
                 vram.read(VRAM.IncrementMode.LOW)
@@ -155,17 +211,43 @@ class PPU : MemoryMapping {
                 cgram.read()
             }
             0x213C -> {
-                // TODO HCOUNTER
-                return -1
+                val r = if (hoffsetHigh) hoffset.highByte() else hoffset.lowByte()
+                hoffsetHigh = !hoffsetHigh
+                return r
             }
             0x213D -> {
-                // TODO VCOUNTER
-                return -1
+                val r = if (voffsetHigh) voffset.highByte() else voffset.lowByte()
+                voffsetHigh = !voffsetHigh
+                return -r
             }
-            0x213E,
+            0x213E -> {
+                var r = 0
+                if (timeOver) r = r or 0x80
+                if (rangeOver) r = r or 0x40
+                //if (masterSlave)
+                    r = r or 0x40
+                val version = 1
+                r = r or version
+
+                r
+            }
             0x213F -> {
-                // TODO PPU STATUS FLAGS
-                -1
+                hoffsetHigh = false
+                voffsetHigh = false
+
+                var r = 0
+                if (interlaceField) r = r or 0x80
+                if (countersLatched) {
+                    r = r or 0x40
+                    if (snes.controllers.programmableIo2Line) {
+                        countersLatched = false
+                    }
+                }
+                if (snes.version == SNES.Version.PAL) r = r or 0x02
+                val version = 2
+                r = r or version
+
+                r
             }
             else -> { println("READ PPU ${address.toString(16)}"); error("not implemented yet") }
         }
@@ -190,9 +272,15 @@ class PPU : MemoryMapping {
                 oam.address = value.asByte()
             }
             0x2104 -> {
-                // TODO write to OAM
-                // be aware of the specialities
-                // https://wiki.superfamicom.org/registers#toc-11 OAMDATA
+                oam.write(value)
+            }
+            0x2105 -> {
+                bgMode = value and 0x07
+                bg3Prio = value.isBitSet(0x08)
+                backgrounds[0].bigSize = value.isBitSet(0x10)
+                backgrounds[1].bigSize = value.isBitSet(0x20)
+                backgrounds[2].bigSize = value.isBitSet(0x40)
+                backgrounds[3].bigSize = value.isBitSet(0x80)
             }
             0x2106 -> {
                 mosaicSize = (value shr 4).asByte() + 1
@@ -250,16 +338,45 @@ class PPU : MemoryMapping {
                 vram.dataWrite = vram.dataWrite.withHigh(value.asByte())
                 vram.write(VRAM.IncrementMode.LOW)
             }
-            in 0x211A..0x2120 -> {
-                // TODO Mode7
+            0x211A -> {
+                mode7.bigSize = value.isBitSet(0x80)
+                mode7.spaceFill = value.isBitSet(0x40)
+                mode7.mirrorY = value.isBitSet(0x2)
+                mode7.mirrorX = value.isBitSet(0x1)
+            }
+            0x211B -> {
+                mode7.matrixA = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
+
+                product = mode7.matrixA * mode7.matrixB.asByte()
+            }
+            0x211C -> {
+                mode7.matrixB = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
+
+                product = mode7.matrixA * mode7.matrixB.asByte()
+            }
+            0x211D -> {
+                mode7.matrixC = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
+            }
+            0x211E -> {
+                mode7.matrixD = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
+            }
+            0x211F -> {
+                mode7.centerX = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
+            }
+            0x2120 -> {
+                mode7.centerY = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
             }
             0x2121 -> {
                 cgram.address = value.asByte()
             }
             0x2122 -> {
                 cgram.write(value.asByte())
-                // TODO write to cgram
-                // for logic see write to 0x2104
             }
             0x2123 -> {
                 backgrounds[0].window1Inversion = value.isBitSet(0x01)
@@ -365,13 +482,23 @@ class PPU : MemoryMapping {
                 val colorPlanes = value and 0xE0 shl 5
                 // TODO ???
             }
+            0x2133 -> {
+                externalSync = value.isBitSet(0x80)
+                mode7.extBg = value.isBitSet(0x40)
+                pseuoHire = value.isBitSet(0x08)
+                overscan = value.isBitSet(0x04)
+                objInterlace = value.isBitSet(0x02)
+                screenInterlace = value.isBitSet(0x01)
+            }
             in 0x2134..0x213F -> {
             }
             M7HOFS -> {
-                mode7.hScroll = (value and 0xFF shl 8) or bgnOffsPrev1
+                mode7.hScroll = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
             }
             M7VOFS -> {
-                mode7.vScroll = (value and 0xFF shl 8) or bgnOffsPrev1
+                mode7.vScroll = Short(value.asByte(), mode7.prev)
+                mode7.prev = value.asByte()
             }
             else -> { println("WRITE ${value.toString(16)} to PPU ${address.toString(16)}"); error("not implemented yet")}
         }
@@ -386,6 +513,36 @@ class PPU : MemoryMapping {
 class Mode7 {
     var hScroll = 0
     var vScroll = 0
+    var prev = 0
+    var matrixA = 0
+    var matrixB = 0
+    var matrixC = 0
+    var matrixD = 0
+    var centerX = 0
+    var centerY = 0
+    var bigSize = false
+    /** false for transparent, true for character 0 */
+    var spaceFill = false
+    var mirrorX = false
+    var mirrorY = false
+    var extBg = false
+
+    fun reset() {
+        hScroll = 0
+        vScroll = 0
+        prev = 0
+        matrixA = 0
+        matrixB = 0
+        matrixC = 0
+        matrixD = 0
+        centerX = 0
+        centerY = 0
+        bigSize = false
+        spaceFill = false
+        mirrorX = false
+        mirrorY = false
+        extBg = false
+    }
 }
 
 enum class ObjectSize {
