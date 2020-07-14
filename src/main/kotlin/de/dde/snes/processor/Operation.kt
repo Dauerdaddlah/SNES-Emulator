@@ -58,36 +58,3 @@ class OperationSimple1(
         action(addressMode.fetchValue())
     }
 }
-
-/**
- * An Operation, which executes on a memory-address
- */
-open class OperationSimpleAddress(
-    symbol: String,
-    description: String,
-    val processor: ProcessorAccess,
-    val action: (Bank, ShortAddress) -> Any?
-) : OperationBase(symbol, description) {
-    override fun execute(addressMode: AddressMode) {
-        val v = addressMode.fetchValue()
-
-        val bank = when (addressMode.result) {
-            AddressModeResult.ADDRESS_0 -> 0
-            AddressModeResult.FULLADDRESS -> v.bank
-            AddressModeResult.SHORTADDRESS,
-            AddressModeResult.ADDRESS_DBR,
-            AddressModeResult.ADDRESS_PBR -> processor.getBankFor(addressMode.result)
-            else -> error("Invalid addressmode<$addressMode> given for operand<$symbol> ($description)")
-        }
-        val address = when (addressMode.result) {
-            AddressModeResult.ADDRESS_PBR,
-            AddressModeResult.ADDRESS_0,
-            AddressModeResult.ADDRESS_DBR,
-            AddressModeResult.SHORTADDRESS -> v
-            AddressModeResult.FULLADDRESS -> v.shortAddress
-            else -> error("invalid addressmode<$addressMode> given for operation<$symbol> ($description)")
-        }
-
-        action(bank, address)
-    }
-}
