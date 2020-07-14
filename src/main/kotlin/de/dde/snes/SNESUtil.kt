@@ -11,7 +11,7 @@ fun Int.highByte() = this and 0xFF00 shr 8
 fun Int.longByte() = this and 0xFF0000 shr 16
 
 fun Int.asByte() = this and 0xFF
-fun Int.asShort() = this and 0xFF
+fun Int.asShort() = this and 0xFFFF
 
 fun Short(lowByte: Int, highByte: Int) = lowByte or (highByte shl 8)
 
