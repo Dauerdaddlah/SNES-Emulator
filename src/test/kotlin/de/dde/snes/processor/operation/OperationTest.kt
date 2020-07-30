@@ -108,4 +108,18 @@ abstract class OperationTest(
             prepareStatus(a16 = true)
         }
     }
+
+    abstract inner class Test8BitIndex {
+        @BeforeEach
+        fun initialize() {
+            prepareStatus(i16 = false)
+        }
+    }
+
+    abstract inner class Test16BitIndex {
+        @BeforeEach
+        fun initialize() {
+            prepareStatus(i16 = true)
+        }
+    }
 }

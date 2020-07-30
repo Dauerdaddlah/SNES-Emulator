@@ -92,7 +92,7 @@ class StatusRegister : Register {
         if (zero) bits = bits.setBit(BIT_ZERO)
         if (irqDisable) bits = bits.setBit(BIT_IRQ_DISABLE)
         if (decimal) bits = bits.setBit(BIT_DECIMAL)
-        if (emulationMode) bits = bits.setBit(BIT_BREAK) else bits = bits.setBit(BIT_INDEX)
+        if (emulationMode) { if (_break) bits = bits.setBit(BIT_BREAK) } else if (index) bits = bits.setBit(BIT_INDEX)
         if (emulationMode || memory) bits = bits.setBit(BIT_MEMORY)
         if (overflow) bits = bits.setBit(BIT_OVERFLOW)
         if (negative) bits = bits.setBit(BIT_NEGATIVE)

@@ -108,7 +108,6 @@ class ProcessorOperationsBitTest {
         }
     }
 
-    // TODO test for overflow bit as well
     @Nested
     inner class Bit : OperationTest(
         "BIT",
@@ -261,6 +260,319 @@ class ProcessorOperationsBitTest {
                 status.zero = zero
 
                 testOperation(a = a)
+            }
+        }
+    }
+
+    @Nested
+    inner class Cmp : OperationTest(
+        "CMP",
+        { cmp }
+    ) {
+        @Nested
+        inner class Cmp8 : Test8Bit() {
+            @Test
+            fun immediate() {
+                prepareProcessor(a = 0x70)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+
+                testOperation(a = 0x70)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, a = 0x0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+
+                testOperation(dbr = 0x01, a = 0x0F)
+            }
+
+            @Test
+            fun ignoreHighByte() {
+                prepareProcessor(a = 0xF070)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+
+                testOperation(a = 0xF070)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, false, true, false",
+                "0xFF, 0xFF, false, true, false",
+                "0x80, 0x00, true, false, false",
+                "0x01, 0xFF, false, false, true", // 74 35
+                "0x00, 0x01, true, false, true"
+            )
+            fun status(a: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(a = a)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(a = a)
+            }
+        }
+
+        @Nested
+        inner class Cmp16 : Test16Bit() {
+            @Test
+            fun immediate() {
+                prepareProcessor(a = 0x7070)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+                addressMode.fetchNext(0x3C)
+
+                testOperation(a = 0x7070)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, a = 0x0F0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+                memory.returnFor(0x01, 0x2333, 0x06)
+
+                testOperation(dbr = 0x01, a = 0x0F0F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, 0, false, true, false",
+                "0xFFFF, 0xFF, 0xFF, false, true, false",
+                "0x8000, 0x00, 0x00, true, false, false",
+                "0x0001, 0xFF, 0xFF, false, false, true",
+                "0x0000, 0x01, 0x00, true, false, true"
+            )
+            fun status(a: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(a = a)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch1)
+                addressMode.fetchNext(fetch2)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(a = a)
+            }
+        }
+    }
+
+    @Nested
+    inner class Cpx : OperationTest(
+        "CPX",
+        { cpx }
+    ) {
+        @Nested
+        inner class Cpx8 : Test8BitIndex() {
+            @Test
+            fun immediate() {
+                prepareProcessor(x = 0x70)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+
+                testOperation(x = 0x70)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, x = 0x0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+
+                testOperation(dbr = 0x01, x = 0x0F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, false, true, false",
+                "0xFF, 0xFF, false, true, false",
+                "0x80, 0x00, true, false, false",
+                "0x01, 0xFF, false, false, true",
+                "0x00, 0x01, true, false, true"
+            )
+            fun status(x: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(x = x)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(x = x)
+            }
+        }
+
+        @Nested
+        inner class Cpx16 : Test16BitIndex() {
+            @Test
+            fun immediate() {
+                prepareProcessor(x = 0x7070)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+                addressMode.fetchNext(0x3C)
+
+                testOperation(x = 0x7070)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, x = 0x0F0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+                memory.returnFor(0x01, 0x2333, 0x06)
+
+                testOperation(dbr = 0x01, x = 0x0F0F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, 0, false, true, false",
+                "0xFFFF, 0xFF, 0xFF, false, true, false",
+                "0x8000, 0x00, 0x00, true, false, false",
+                "0x0001, 0xFF, 0xFF, false, false, true",
+                "0x0000, 0x01, 0x00, true, false, true"
+            )
+            fun status(x: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(x = x)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch1)
+                addressMode.fetchNext(fetch2)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(x = x)
+            }
+        }
+    }
+
+    @Nested
+    inner class Cpy : OperationTest(
+        "CPY",
+        { cpy }
+    ) {
+        @Nested
+        inner class Cpy8 : Test8BitIndex() {
+            @Test
+            fun immediate() {
+                prepareProcessor(y = 0x70)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+
+                testOperation(y = 0x70)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, y = 0x0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+
+                testOperation(dbr = 0x01, y = 0x0F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, false, true, false",
+                "0xFF, 0xFF, false, true, false",
+                "0x80, 0x00, true, false, false",
+                "0x01, 0xFF, false, false, true",
+                "0x00, 0x01, true, false, true"
+            )
+            fun status(y: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(y = y)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(y = y)
+            }
+        }
+
+        @Nested
+        inner class Cpy16 : Test16BitIndex() {
+            @Test
+            fun immediate() {
+                prepareProcessor(y = 0x7070)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x3C)
+                addressMode.fetchNext(0x3C)
+
+                testOperation(y = 0x7070)
+            }
+
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x01, y = 0x0F0F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x01, 0x2332, 0x06)
+                memory.returnFor(0x01, 0x2333, 0x06)
+
+                testOperation(dbr = 0x01, y = 0x0F0F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, 0, false, true, false",
+                "0xFFFF, 0xFF, 0xFF, false, true, false",
+                "0x8000, 0x00, 0x00, true, false, false",
+                "0x0001, 0xFF, 0xFF, false, false, true",
+                "0x0000, 0x01, 0x00, true, false, true"
+            )
+            fun status(y: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
+                prepareProcessor(y = y)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch1)
+                addressMode.fetchNext(fetch2)
+
+                status.negative = negative
+                status.zero = zero
+                status.carry = carry
+
+                testOperation(y = y)
             }
         }
     }
