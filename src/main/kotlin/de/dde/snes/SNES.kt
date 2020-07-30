@@ -5,16 +5,17 @@ import de.dde.snes.cartridge.Cartridge
 import de.dde.snes.controller.Controllers
 import de.dde.snes.cpu.CPU
 import de.dde.snes.memory.Memory
+import de.dde.snes.memory.MemoryImpl
 import de.dde.snes.ppu.PPU
 import de.dde.snes.processor.Processor
 
 class SNES {
-    val memory = Memory(this)
-    val processor = Processor(this)
+    val memory = MemoryImpl(this)
+    val processor = Processor(memory)
     val apu = APU()
-    val cpu = CPU()
+    val cpu = CPU(this)
     val dma = Array(8) { DMA(this, it) }
-    val ppu = PPU()
+    val ppu = PPU(this)
     val controllers = Controllers(this)
 
     var version = Version.PAL

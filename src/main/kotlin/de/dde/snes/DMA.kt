@@ -97,7 +97,7 @@ class DMA(
         error("not implemented yet")
     }
 
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return when (address and 0xF) {
             0x0 -> {
                 var r = 0
@@ -147,7 +147,7 @@ class DMA(
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         when (address and 0xF) {
             0x0 -> {
                 transferDirection = value.isBitSet(0x80)

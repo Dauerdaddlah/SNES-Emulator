@@ -5,6 +5,7 @@ import de.dde.snes.controller.Joypad
 import java.nio.file.Paths
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.system.exitProcess
 import kotlin.system.measureTimeMillis
 
 fun main() {

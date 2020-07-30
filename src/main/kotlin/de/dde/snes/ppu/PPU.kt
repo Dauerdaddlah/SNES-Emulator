@@ -7,7 +7,9 @@ import de.dde.snes.memory.MemoryMapping
 import de.dde.snes.memory.ShortAddress
 import java.awt.Color
 
-class PPU : MemoryMapping {
+class PPU(
+    private val snes: SNES
+) : MemoryMapping {
     val oam = OAM()
     val vram = VRAM()
     val cgram = CGRAM()
@@ -108,7 +110,7 @@ class PPU : MemoryMapping {
     }
 
     // TODO check if access is possible at any time or only in specific blanks
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return when (address) {
             0x2100 -> {
                 var r = brightness
@@ -253,7 +255,7 @@ class PPU : MemoryMapping {
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         when (address) {
             0x2100 -> {
                 forceBlank = value.isBitSet(0x80)
@@ -305,9 +307,9 @@ class PPU : MemoryMapping {
             }
             in 0x210D..0x2114 -> {
                 if (address == 0x210D) {
-                    writeByte(snes, bank, M7HOFS, value)
+                    writeByte(bank, M7HOFS, value)
                 } else if (address == 0x210E) {
-                    writeByte(snes, bank, M7VOFS, value)
+                    writeByte(bank, M7VOFS, value)
                 }
 
                 val bg = backgrounds[(address - 0x210D) / 2]

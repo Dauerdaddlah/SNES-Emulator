@@ -5,13 +5,11 @@ import de.dde.snes.memory.*
 import de.dde.snes.processor.addressmode.*
 import de.dde.snes.processor.instruction.Instruction
 import de.dde.snes.processor.register.*
-import de.dde.snes.processor.register.StatusRegister.Companion.BIT_CARRY
-import de.dde.snes.processor.register.StatusRegister.Companion.BIT_DECIMAL
 
 class Processor(
-    val snes: SNES
+    val memory: Memory
 ) : MemoryMapping {
-    val memory = snes.memory
+    var fastRom = false
 
     var irqFlag = false
     var nmiFlag = false
@@ -22,27 +20,27 @@ class Processor(
 
     // registers
     /** accumulator */
-    var rA = Accumulator()
+    val rA = Accumulator()
     /** Data Bank Register */
-    var rDBR = Register8Bit()
+    val rDBR = Register8Bit()
     /** Direct */
-    var rD = Register16Bit()
+    val rD = Register16Bit()
     /** X Index Register */
-    var rX = Register8Bit16Bit()
+    val rX = Register8Bit16Bit()
     /** Y Index Register */
-    var rY = Register8Bit16Bit()
+    val rY = Register8Bit16Bit()
     /** Processor Status Register */
-    var rP = StatusRegister()
+    val rP = StatusRegister()
     /** Program Bank Register */
-    var rPBR = Register8Bit()
+    val rPBR = Register8Bit()
     /** Program Counter */
-    var rPC = Register16Bit()
+    val rPC = Register16Bit()
     /** Stack Pointer */
-    var rS = StackPointer()
+    val rS = StackPointer()
 
-    private val operations = Operations()
-    private val addressModes = AddressModes()
-    private val instructions = Instructions()
+    internal val operations = Operations()
+    internal val addressModes = AddressModes()
+    internal val instructions = Instructions()
 
     var waitForInterrupt = false
         private set
@@ -76,7 +74,8 @@ class Processor(
         checkRegisterSizes()
     }
 
-    private fun checkRegisterSizes() {
+    fun checkRegisterSizes() {
+        rP.emulationMode = mode == ProcessorMode.EMULATION
         rA.size16Bit = mode == ProcessorMode.NATIVE && !rP.memory
         rX.size16Bit = mode == ProcessorMode.NATIVE && !rP.index
         rY.size16Bit = rX.size16Bit
@@ -99,7 +98,7 @@ class Processor(
     }
 
     private fun fetch(): Int {
-        val v = readByte(
+        val v = readByteInt(
             rPBR.value,
             rPC.value
         )
@@ -111,7 +110,7 @@ class Processor(
         = Short(fetch(), fetch())
 
     private fun fetchLong(): Int
-        = fetchShort().withHigh(fetch())
+        = fetchShort().withLongByte(fetch())
 
     fun NMI() {
         nmiFlag = true
@@ -123,31 +122,31 @@ class Processor(
         interrupt(IRQ_VECTOR_ADDRESS, IRQ_VECTOR_ADDRESS)
     }
 
-    private fun readByte(bank: Bank, address: ShortAddress): Int {
+    private fun readByteInt(bank: Bank, address: ShortAddress): Int {
         cycles += getCyclesForAddress(bank, address)
         return memory.readByte(bank, address)
     }
 
     private fun readShort(bank: Bank, address: ShortAddress)
-        = Short(readByte(bank, address), (readByte(bank, shortAddress(address.shortAddress + 1))))
+        = Short(readByteInt(bank, address), (readByteInt(bank, shortAddress(address.shortAddress + 1))))
 
     private fun readLong(bank: Bank, address: ShortAddress)
-        = readShort(bank, address).withLongByte(readByte(bank, shortAddress(address.shortAddress + 2)))
+        = readShort(bank, address).withLongByte(readByteInt(bank, shortAddress(address.shortAddress + 2)))
 
-    private fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
+    private fun writeByteInt(bank: Bank, address: ShortAddress, value: Int) {
         cycles += getCyclesForAddress(bank, address)
         memory.writeByte(bank, address, value)
     }
 
     private fun writeWord(bank: Bank, address: ShortAddress, value: Int) {
-        writeByte(bank, address, value)
-        writeByte(bank, shortAddress(address.shortAddress + 1), value shr 8)
+        writeByteInt(bank, address, value)
+        writeByteInt(bank, shortAddress(address.shortAddress + 1), value shr 8)
     }
 
     private fun getCyclesForAddress(bank: Bank, address: ShortAddress): Int {
         // TODO copied from snes9x
         if (bank and 0x40 != 0 || address and 0x8000 != 0) {
-            return if (bank and 0x80 != 0) FastROMSpeed(snes) else SLOW_ONE_CYCLE
+            return if (bank and 0x80 != 0) (if (fastRom) ONE_CYCLE else SLOW_ONE_CYCLE) else SLOW_ONE_CYCLE
         }
 
         if (address + 0x6000 and 0x4000 != 0) return SLOW_ONE_CYCLE
@@ -157,7 +156,7 @@ class Processor(
     }
 
     private fun pushByte(value: Int) {
-        writeByte(
+        writeByteInt(
             0,
             rS.get(),
             value)
@@ -171,7 +170,7 @@ class Processor(
 
     private fun pullByte(): Int {
         rS.inc()
-        return readByte(
+        return readByteInt(
             0,
             rS.get()
         )
@@ -314,7 +313,7 @@ class Processor(
         rP.zero = result == 0
         if (!onlyZero) {
             rP.negative = r.isNegative(result)
-            rP.overflow = result.isBitSet(0x40)
+            rP.overflow = if (r.size == 1) result.isBitSet(0x40) else result.isBitSet(0x4000)
         }
     }
 
@@ -418,7 +417,6 @@ class Processor(
         val t = rP.carry
         rP.carry = mode == ProcessorMode.EMULATION
         mode = if (t) ProcessorMode.EMULATION else ProcessorMode.NATIVE
-        rP.emulationMode = mode == ProcessorMode.EMULATION
 
         checkRegisterSizes()
     }
@@ -434,14 +432,14 @@ class Processor(
 
     fun write(bank: Bank, address: ShortAddress, value: Int, size: Int = 1) {
         when (size) {
-            1 -> writeByte(bank, address, value)
+            1 -> writeByteInt(bank, address, value)
             2 -> writeWord(bank, address, value)
         }
     }
 
     private fun read(bank: Bank, address: ShortAddress, size: Int = 1): Int {
         return when (size) {
-            1 -> readByte(bank, address)
+            1 -> readByteInt(bank, address)
             2 -> readShort(bank, address)
             else -> error("can only read 1 or 2 bytes")
         }
@@ -457,16 +455,16 @@ class Processor(
         rDBR.value = bankDest
 
         while (!rA.zero) {
-            writeByte(bankDest, rY.get(),
-                readByte(bankSource, rX.get()))
+            writeByteInt(bankDest, rY.get(),
+                readByteInt(bankSource, rX.get()))
 
             rA.set(rA.get() - 1)
             rX.set(rX.get() + increment)
             rY.set(rY.get() + increment)
         }
 
-        writeByte(bankDest, rY.get(),
-            readByte(bankSource, rX.get()))
+        writeByteInt(bankDest, rY.get(),
+            readByteInt(bankSource, rX.get()))
 
         rA.set(rA.get() - 1)
         rX.set(rX.get() + increment)
@@ -493,12 +491,13 @@ class Processor(
         rPC.inc()
     }
 
-    private inner class AddressModes {
+    internal inner class AddressModes {
         /** a */       val absolute = addressModeSimpleShort("a", "Absolute", AddressModeResult.ADDRESS_DBR)
-        /** (a,x) */   val absoluteIndexedIndirect = addressModeSimpleShort("(a,x)", "Absolute Indexed Indirect", AddressModeResult.ADDRESS_PBR, rX)
+        /** (a,x) */   val absoluteIndexedIndirect = addressModeIndirectShort("(a,x)", "Absolute Indexed Indirect", { it + rX.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.SHORTADDRESS)
         /** a,x */     val absoluteIndexedWithX = addressModeSimpleShort("a,x", "Absolute Indexed With X", AddressModeResult.ADDRESS_DBR, rX)
         /** a,y */     val absoluteIndexedWithY = addressModeSimpleShort("a,y", "Absolute Indexed With Y", AddressModeResult.ADDRESS_DBR, rY)
-        /** (a) */     val absoluteIndirect = addressModeSimpleShort("(a)", "Absolute Indirect", AddressModeResult.ADDRESS_0)
+        /** (a) */     val absoluteIndirect = addressModeIndirectShort("(a)", "Absolute Indirect", { it }, AddressModeResult.ADDRESS_0, AddressModeResult.SHORTADDRESS)
+        /** (a) */     val absoluteIndirectLong = addressModeIndirectShort("(a)", "Absolute Indirect", {it }, AddressModeResult.ADDRESS_0, AddressModeResult.FULLADDRESS)
         /** al,x */    val absoluteLongIndexedWithX = addressModeSimpleLong("al,x", "Absolute Long Indexed With X", AddressModeResult.FULLADDRESS, rX)
         /** al */      val absoluteLong = addressModeSimpleLong("al", "Absolute Long", AddressModeResult.FULLADDRESS)
         /** (d,x) */   val directIndexedIndirect = addressModeIndirect("(d,x)", "Direct Indexed Indirect", { it + rD.get() + rX.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR)
@@ -518,21 +517,21 @@ class Processor(
         /** xyc */     val blockMove = noAddressMode("xyc", "Block Move", "Block Move does not provide any value")
         /** i */       val implied = noAddressMode("i", "Implied", "Implied does not provide any value")
         /** s */       val stack = noAddressMode("s", "Stack", "Stack does not fetch any value")
-        /**  */        val adressNull = noAddressMode("", "", "no valid addressMode")
+        /**  */        val addressNull = noAddressMode("", "", "no valid addressMode")
 
-        fun noAddressMode(
+        private fun noAddressMode(
             symbol: String,
             description: String,
             errorMessage: String
         ): AddressMode = AddressModeNoValue(symbol, description, AddressModeResult.NOTHING, errorMessage)
 
-        fun addressModeSimple(
+        private fun addressModeSimple(
             symbol: String,
             description: String,
             result: AddressModeResult
         ): AddressMode = AddressModeSimple(symbol, description, result) { fetch() }
 
-        fun addressModeSimple(
+        private fun addressModeSimple(
             symbol: String,
             description: String,
             result: AddressModeResult,
@@ -543,7 +542,7 @@ class Processor(
             result
         ) { shortAddress(fetch() + r.get())}
 
-        fun addressModeSimple(
+        private fun addressModeSimple(
             symbol: String,
             description: String,
             result: AddressModeResult,
@@ -553,42 +552,42 @@ class Processor(
             symbol,
             description,
             result
-        ) { shortAddress(fetchShort() + r.get() + r2.get())}
+        ) { shortAddress(fetch() + r.get() + r2.get())}
 
-        fun addressModeSimpleShort(
+        private fun addressModeSimpleShort(
             symbol: String,
             description: String,
             result: AddressModeResult
         ): AddressMode = AddressModeSimple(symbol, description, result) { fetchShort() }
 
-        fun addressModeSimpleShort(
+        private fun addressModeSimpleShort(
             symbol: String,
             description: String,
             result: AddressModeResult,
             r: Register
         ): AddressMode = AddressModeSimple(symbol, description, result) { shortAddress(fetchShort() + r.get())}
 
-        fun addressModeSimpleLong(
+        private fun addressModeSimpleLong(
             symbol: String,
             description: String,
             result: AddressModeResult
         ): AddressMode = AddressModeSimple(symbol, description, result) { fetchLong() }
 
-        fun addressModeSimpleLong(
+        private fun addressModeSimpleLong(
             symbol: String,
             description: String,
             result: AddressModeResult,
             r: Register
         ): AddressMode = AddressModeSimple(symbol, description, result) { fetchLong() + r.get() }
 
-        fun addressModeRegister(
+        private fun addressModeRegister(
             symbol: String,
             description: String,
             result: AddressModeResult,
             r: Register
         ): AddressMode = AddressModeSimple(symbol, description, result) { r.get() }
 
-        fun addressModeIndirect(
+        private fun addressModeIndirect(
             symbol: String,
             description: String,
             prepareAddress1: (Int) -> Int,
@@ -619,7 +618,66 @@ class Processor(
             }
 
             r = when (middleResult2.size) {
-                1 -> readByte(bank1, r)
+                1 -> readByteInt(bank1, r)
+                2 -> readShort(bank1, r)
+                3 -> readLong(bank1, r)
+                else -> error("invalid middleResult<$middleResult2> for indirect addressmode")
+            }
+
+            val bank2 = when (middleResult2) {
+                AddressModeResult.SHORTADDRESS,
+                AddressModeResult.ADDRESS_PBR -> rPBR.get()
+                AddressModeResult.FULLADDRESS -> {
+                    val b = r.longByte()
+                    r = r.shortAddress
+                    b
+                }
+                AddressModeResult.ADDRESS_0 -> 0
+                AddressModeResult.ADDRESS_DBR -> rDBR.get()
+                else -> error("AddressMode<$middleResult> not allowed as middleResult for indirect addressmodes")
+            }
+
+            if (endResult.size == 3) {
+                r = r.withLongByte(bank2)
+            }
+
+            r = prepareAddress2(r)
+
+            r
+        }
+
+        private fun addressModeIndirectShort(
+            symbol: String,
+            description: String,
+            prepareAddress1: (Int) -> Int,
+            middleResult: AddressModeResult,
+            middleResult2: AddressModeResult,
+            prepareAddress2: (Int) -> Int = { it },
+            endResult: AddressModeResult = middleResult2
+        ): AddressMode = AddressModeSimple(
+            symbol,
+            description,
+            endResult
+        ) {
+            var r = fetchShort()
+
+            r = prepareAddress1(r)
+
+            val bank1 = when (middleResult) {
+                AddressModeResult.SHORTADDRESS,
+                AddressModeResult.ADDRESS_PBR -> rPBR.get()
+                AddressModeResult.FULLADDRESS -> {
+                    val b = r.longByte()
+                    r = r.shortAddress
+                    b
+                }
+                AddressModeResult.ADDRESS_0 -> 0
+                AddressModeResult.ADDRESS_DBR -> rDBR.get()
+                else -> error("AddressMode<$middleResult> not allowed as middleResult for indirect addressmodes")
+            }
+
+            r = when (middleResult2.size) {
+                1 -> readByteInt(bank1, r)
                 2 -> readShort(bank1, r)
                 3 -> readLong(bank1, r)
                 else -> error("invalid middleResult<$middleResult2> for indirect addressmode")
@@ -648,7 +706,7 @@ class Processor(
         }
     }
 
-    private inner class Operations {
+    inner class Operations {
         val adc = OperationAddressImmediate("ADC", "add with carry", rA) { r, value -> r.set(addCarry(r, r.get(), value)) }
         val and = OperationAddressImmediate("AND", "And with accumulator", rA) { r, value -> r.set(and(r, r.get(), value)) }
         val asl = OperationSetAddress("ASL", "Shift left", rA) { r, _, value -> shiftLeft(r, value, false) }
@@ -664,8 +722,8 @@ class Processor(
         val brl = OperationSimpleAddress("BRL", "Branch Always Long") { bank, address -> branch(bank, address, true) }
         val bvc = OperationSimpleAddress("BVC", "Branch if Overflow clear") { bank, address -> if (!rP.overflow) branch(bank, address) }
         val bvs = OperationSimpleAddress("BVS", "Branch If Overflow set") { bank, address -> if (rP.overflow) branch(bank, address) }
-        val clc = OperationSimple0("CLC", "Clear carry flag") { setPBits(BIT_CARRY, false) }
-        val cld = OperationSimple0("CLD", "Clear decimal flag") { setPBits(BIT_DECIMAL, false) }
+        val clc = OperationSimple0("CLC", "Clear carry flag") { setPBits(StatusRegister.BIT_CARRY, false) }
+        val cld = OperationSimple0("CLD", "Clear decimal flag") { setPBits(StatusRegister.BIT_DECIMAL, false) }
         val cli = OperationSimple0("CLI", "Clear irq/interrupt flag") { setPBits(StatusRegister.BIT_IRQ_DISABLE, false) }
         val clv = OperationSimple0("CLV", "Clear Overflow flag") { setPBits(StatusRegister.BIT_OVERFLOW, false) }
         val cmp = OperationAddressImmediate("CMP", "Compare value with A", rA) { r, value -> compare(r, r.get(), value) }
@@ -850,13 +908,7 @@ class Processor(
             override fun execute(addressMode: AddressMode) {
                 when(addressMode.result) {
                     AddressModeResult.ACCUMULATOR -> {
-                        val v = if (r.size == 1) {
-                            addressMode.fetchValue()
-                        } else {
-                            Short(addressMode.fetchValue(), addressMode.fetchValue())
-                        }
-
-                        r.set(action2(r, r.get(), v))
+                        r.set(action2(r, r.get(), addressMode.fetchValue()))
                     }
                     else -> super.execute(addressMode)
                 }
@@ -864,7 +916,7 @@ class Processor(
         }
     }
 
-    private inner class Instructions {
+    internal inner class Instructions {
         private val instructions = arrayOf(
             /* 0x00 */ Instruction(operations.brk, addressModes.stack),
             /* 0x01 */ Instruction(operations.ora, addressModes.directIndexedIndirect),
@@ -932,7 +984,7 @@ class Processor(
             /* 0x3F */ Instruction(operations.and, addressModes.absoluteLongIndexedWithX),
             /* 0x40 */ Instruction(operations.rti, addressModes.stack),
             /* 0x41 */ Instruction(operations.eor, addressModes.directIndexedIndirect),
-            /* 0x42 */ Instruction(operations.wdm, addressModes.adressNull),
+            /* 0x42 */ Instruction(operations.wdm, addressModes.addressNull),
             /* 0x43 */ Instruction(operations.eor, addressModes.stackRelative),
             /* 0x44 */ Instruction(operations.mvp, addressModes.blockMove),
             /* 0x45 */ Instruction(operations.eor, addressModes.direct),
@@ -1086,12 +1138,12 @@ class Processor(
             /* 0xD9 */ Instruction(operations.cmp, addressModes.absoluteIndexedWithY),
             /* 0xDA */ Instruction(operations.phx, addressModes.stack),
             /* 0xDB */ Instruction(operations.stp, addressModes.implied),
-            /* 0xDC */ Instruction(operations.jml, addressModes.absoluteIndirect),
+            /* 0xDC */ Instruction(operations.jml, addressModes.absoluteIndirectLong),
             /* 0xDD */ Instruction(operations.cmp, addressModes.absoluteIndexedWithX),
             /* 0xDE */ Instruction(operations.dec, addressModes.absoluteIndexedWithX),
             /* 0xDF */ Instruction(operations.cmp, addressModes.absoluteLongIndexedWithX),
             /* 0xE0 */ Instruction(operations.cpx, addressModes.immediate),
-            /* 0xE1 */ Instruction(operations.sbc, addressModes.directIndexedWithX),
+            /* 0xE1 */ Instruction(operations.sbc, addressModes.directIndexedIndirect),
             /* 0xE2 */ Instruction(operations.sep, addressModes.immediate),
             /* 0xE3 */ Instruction(operations.sbc, addressModes.stackRelative),
             /* 0xE4 */ Instruction(operations.cpx, addressModes.direct),
@@ -1110,7 +1162,7 @@ class Processor(
             /* 0xF1 */ Instruction(operations.sbc, addressModes.directIndirectIndexed),
             /* 0xF2 */ Instruction(operations.sbc, addressModes.directIndirect),
             /* 0xF3 */ Instruction(operations.sbc, addressModes.stackRelativeIndirectIndexed),
-            /* 0xF4 */ Instruction(operations.pea, addressModes.immediate),
+            /* 0xF4 */ Instruction(operations.pea, addressModes.absolute),
             /* 0xF5 */ Instruction(operations.sbc, addressModes.directIndexedWithX),
             /* 0xF6 */ Instruction(operations.inc, addressModes.directIndexedWithX),
             /* 0xF7 */ Instruction(operations.sbc, addressModes.directIndirectLongIndexed),
@@ -1130,7 +1182,7 @@ class Processor(
     fun getInstruction(opCode: Int)
         = instructions[opCode]
 
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return when (address) {
             0x4210 -> {
                 val chipVersion = 2
@@ -1147,7 +1199,7 @@ class Processor(
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         when (address) {
             0x4210, 0x4211 -> {
             }
@@ -1167,6 +1219,5 @@ class Processor(
         private const val ONE_CYCLE = 6
         private const val TWO_CYCLES = 2 * ONE_CYCLE
         private const val SLOW_ONE_CYCLE = 8
-        private inline fun FastROMSpeed(snes: SNES) = if (snes.cpu.fastRom) ONE_CYCLE else SLOW_ONE_CYCLE
     }
 }

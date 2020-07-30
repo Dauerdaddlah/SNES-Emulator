@@ -21,5 +21,6 @@ fun Int.withLow(lowByte: Int) = (this and 0xFF00) or lowByte
 fun Int.withLongByte(longByte: Int) = this.asShort() or (longByte shl 16)
 
 fun Int.toHexString() = this.toString(16)
-fun Bank.toBankString() = "%02x".format(this)
-fun ShortAddress.toAddressString() = "%04x".format(this)
+fun Int.toHexString(size: Int) = "%0${size}x".format(this)
+fun Bank.toBankString() = this.toHexString(2)
+fun ShortAddress.toAddressString() = this.toHexString(4)

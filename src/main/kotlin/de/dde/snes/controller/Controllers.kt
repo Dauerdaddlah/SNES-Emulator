@@ -88,7 +88,7 @@ class Controllers(
         autoJoypadReadActive = autoJoypadReadCounter < 16
     }
 
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return read(address)
     }
 
@@ -146,7 +146,7 @@ class Controllers(
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         write(address, value)
     }
 

@@ -4,6 +4,10 @@ import de.dde.snes.asByte
 import de.dde.snes.isBitSet
 
 class StackPointer : Register8Bit16Bit(r8 = StackPointer8Bit()) {
+    override fun reset() {
+        set(0x1FF)
+    }
+
     private class StackPointer8Bit : Register16Bit() {
         override val size: Int
             get() = 1

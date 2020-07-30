@@ -1,0 +1,4 @@
+BIT
+CMP
+CPX
+CPY

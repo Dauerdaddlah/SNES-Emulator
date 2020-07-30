@@ -6,7 +6,9 @@ import de.dde.snes.memory.Memory
 import de.dde.snes.memory.MemoryMapping
 import de.dde.snes.memory.ShortAddress
 
-class CPU : MemoryMapping {
+class CPU(
+    private val snes: SNES
+) : MemoryMapping {
     val wram = WRAM()
 
     var nmiEnabled = false
@@ -57,7 +59,7 @@ class CPU : MemoryMapping {
         fastRom = false
     }
 
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return when (address) {
             0x2180 -> {
                 wram.read()
@@ -132,7 +134,7 @@ class CPU : MemoryMapping {
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         when (address) {
             0x2180 -> {
                 wram.write(value)

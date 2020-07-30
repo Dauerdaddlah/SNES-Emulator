@@ -25,7 +25,7 @@ class APU : MemoryMapping {
     }
 
     // TODO this is just the implementation for a deactivated APU
-    override fun readByte(snes: SNES, bank: Bank, address: ShortAddress): Int {
+    override fun readByte(bank: Bank, address: ShortAddress): Int {
         return when (address and 0x3) {
             0x0 -> {
                 if (!initialized) {
@@ -40,7 +40,7 @@ class APU : MemoryMapping {
         }
     }
 
-    override fun writeByte(snes: SNES, bank: Bank, address: ShortAddress, value: Int) {
+    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
         when (address and 0x3) {
             0x0 -> {
                 if (!initialized) {

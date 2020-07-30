@@ -1,0 +1,5 @@
+ADC
+AND
+EOR
+ORA
+SBC
