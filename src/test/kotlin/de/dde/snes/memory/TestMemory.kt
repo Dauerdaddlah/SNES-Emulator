@@ -33,7 +33,7 @@ class TestMemory : Memory {
         val w = writes.removeAt(0)
 
         if (bank != w.bank || address != w.address || value.asByte() != w.value) {
-            throw IllegalAccessException("wrong write${Write(bank, address, value)}, expected $w")
+            throw IllegalAccessException("wrong write<${Write(bank, address, value)}>, expected<$w>")
         }
     }
 

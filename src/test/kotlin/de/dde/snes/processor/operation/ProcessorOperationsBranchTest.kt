@@ -193,6 +193,7 @@ class ProcessorOperationsBranchTest {
         @Test
         fun branch_P0() {
             status.set(0)
+            status.emulationMode = true
 
             prepareProcessor(pc = 0x1234)
 
@@ -223,6 +224,7 @@ class ProcessorOperationsBranchTest {
         @Test
         fun branch_P0() {
             status.set(0)
+            status.emulationMode = true
 
             prepareProcessor(pc = 0x1234)
 
@@ -302,6 +304,97 @@ class ProcessorOperationsBranchTest {
             addressMode.fetchNext(0xFFFF)
 
             testOperation(pc = 0xFFFF)
+        }
+    }
+
+    @Nested
+    inner class Jml : OperationTest(
+        "JML",
+        { jml }
+    ) {
+        @Test
+        fun jump() {
+            addressMode.result = AddressModeResult.FULLADDRESS
+            addressMode.fetchNext(0x010203)
+
+            testOperation(pc = 0x0203, pbr = 0x01)
+        }
+    }
+
+    @Nested
+    inner class Jmp : OperationTest(
+        "JMP",
+        { jmp }
+    ) {
+        @Test
+        fun jump() {
+            addressMode.result = AddressModeResult.SHORTADDRESS
+            addressMode.fetchNext(0x0203)
+
+            testOperation(pc = 0x0203)
+        }
+
+        @Test
+        fun jump_alwaysShort() {
+            addressMode.result = AddressModeResult.FULLADDRESS
+            addressMode.fetchNext(0x010203)
+
+            testOperation(pc = 0x0203)
+        }
+    }
+
+    @Nested
+    inner class Jsl : OperationTest(
+        "JSL",
+        { jsl }
+    ) {
+        @Test
+        fun jump() {
+            prepareStatus(s16 = true)
+            prepareProcessor(pc = 0x1234, pbr = 0x56, s = 0xFFFF)
+
+            addressMode.result = AddressModeResult.FULLADDRESS
+            addressMode.fetchNext(0x112233)
+
+            memory.expectWrite(0x00, 0xFFFF, 0x56)
+            memory.expectWrite(0x00, 0xFFFE, 0x12)
+            memory.expectWrite(0x00, 0xFFFD, 0x33)
+
+            testOperation(pc = 0x2233, pbr = 0x11, s = 0xFFFC)
+        }
+    }
+
+    @Nested
+    inner class Jsr : OperationTest(
+        "JSR",
+        { jsr }
+    ) {
+        @Test
+        fun jump() {
+            prepareStatus(s16 = true)
+            prepareProcessor(pc = 0x1234, s = 0xFFFF)
+
+            addressMode.result = AddressModeResult.SHORTADDRESS
+            addressMode.fetchNext(0x1122)
+
+            memory.expectWrite(0x00, 0xFFFF, 0x12)
+            memory.expectWrite(0x00, 0xFFFE, 0x33)
+
+            testOperation(pc = 0x1122, s = 0xFFFD)
+        }
+
+        @Test
+        fun jump_alwaysShort() {
+            prepareStatus(s16 = true)
+            prepareProcessor(pc = 0x1234, s = 0xFFFF)
+
+            addressMode.result = AddressModeResult.FULLADDRESS
+            addressMode.fetchNext(0x112233)
+
+            memory.expectWrite(0x00, 0xFFFF, 0x12)
+            memory.expectWrite(0x00, 0xFFFE, 0x33)
+
+            testOperation(pc = 0x2233, s = 0xFFFD)
         }
     }
 }
