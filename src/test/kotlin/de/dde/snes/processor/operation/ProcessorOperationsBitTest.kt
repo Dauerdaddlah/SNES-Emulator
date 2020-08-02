@@ -677,4 +677,105 @@ class ProcessorOperationsBitTest {
             }
         }
     }
+
+    @Nested
+    inner class Ora : OperationTest(
+        "ORA",
+        { ora }
+    ) {
+        @Nested
+        inner class Ora8 : Test8Bit() {
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x11, a = 0x2A)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x22)
+
+                memory.returnFor(0x11, 0x22, 0x55)
+
+                testOperation(dbr = 0x11, a = 0x7F)
+            }
+
+            @Test
+            fun immediate() {
+                prepareProcessor(a = 0x2A)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x55)
+
+                testOperation(a = 0x7F)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, 0, false, true",
+                "0x80, 0x00, 0x80, true, false",
+                "0xFF, 0xFF, 0xFF, true, false",
+                "0xAA, 0x55, 0xFF, true, false",
+                "0x3C, 0xF0, 0xFC, true, false",
+                "0x0F, 0x3C, 0x3F, false, false"
+            )
+            fun status(a: Int, fetch: Int, result: Int, negative: Boolean, zero: Boolean) {
+                prepareProcessor(a = a)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch)
+
+                status.negative = negative
+                status.zero = zero
+
+                testOperation(a = result)
+            }
+        }
+
+        @Nested
+        inner class Ora16 : Test16Bit() {
+            @Test
+            fun address() {
+                prepareProcessor(dbr = 0x12, a = 0x700F)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x2332)
+
+                memory.returnFor(0x12, 0x2332, 0xF0)
+                memory.returnFor(0x12, 0x2333, 0x0F)
+
+                testOperation(dbr = 0x12, a = 0x7FFF)
+            }
+
+            @Test
+            fun immediate() {
+                prepareProcessor(a = 0x70F0)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(0x0F)
+                addressMode.fetchNext(0x0F)
+
+                testOperation(a = 0x7FFF)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, 0, 0, false, true",
+                "0x8000, 0x00, 0x00, 0x8000, true, false",
+                "0xFFFF, 0xFF, 0xFF, 0xFFFF, true, false",
+                "0xAAAA, 0x55, 0x55, 0xFFFF, true, false",
+                "0xC33C, 0x0F, 0xF0, 0xF33F, true, false",
+                "0x0FF0, 0xC3, 0x3C, 0x3FF3, false, false"
+            )
+            fun status(a: Int, fetch1: Int, fetch2: Int, result: Int, negative: Boolean, zero: Boolean) {
+                prepareProcessor(a = a)
+
+                addressMode.result = AddressModeResult.IMMEDIATE
+                addressMode.fetchNext(fetch1)
+                addressMode.fetchNext(fetch2)
+
+                status.negative = negative
+                status.zero = zero
+
+                testOperation(a = result)
+            }
+        }
+    }
 }

@@ -21,7 +21,11 @@ abstract class OperationTest(
     var mode: ProcessorMode = ProcessorMode.EMULATION
     private val operation = operation(processor.operations)
 
-    fun prepareStatus(a16: Boolean = false, i16: Boolean = false, s16: Boolean = a16 || i16) {
+    fun prepareStatus(
+        a16: Boolean = mode == ProcessorMode.NATIVE && !status.memory,
+        i16: Boolean = mode == ProcessorMode.NATIVE && !status.index,
+        s16: Boolean = mode == ProcessorMode.NATIVE || a16 || i16
+    ) {
         if ((a16 || i16) && !s16) {
             error("the stackpointer cannot be 8-bit if accumulator or indices are 16-bit")
         }

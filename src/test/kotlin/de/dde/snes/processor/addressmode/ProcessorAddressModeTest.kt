@@ -162,7 +162,11 @@ class ProcessorAddressModeTest {
 
     @Test
     fun test_BlockMove() {
-        testMode(processor.addressModes.blockMove, "xyc", AddressModeResult.NOTHING, -1)
+        prepareProcessor(0x1111, 0x22, 0x33)
+
+        memory.returnFor(0x22, 0x1111, 0x44)
+
+        testMode(processor.addressModes.immediate, "#", AddressModeResult.IMMEDIATE, 0x44)
     }
 
     @Test

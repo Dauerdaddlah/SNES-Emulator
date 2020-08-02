@@ -454,6 +454,10 @@ class Processor(
     fun blockMove(bankDest: Bank, bankSource: Bank, increment: Int) {
         rDBR.value = bankDest
 
+        val sizeA = rA.size16Bit
+        // A is always considered 16-bit in block-move-instructions
+        rA.size16Bit = true
+
         while (!rA.zero) {
             writeByteInt(bankDest, rY.get(),
                 readByteInt(bankSource, rX.get()))
@@ -469,6 +473,8 @@ class Processor(
         rA.set(rA.get() - 1)
         rX.set(rX.get() + increment)
         rY.set(rY.get() + increment)
+
+        rA.size16Bit = sizeA
     }
 
     fun returnFromInterrupt() {
@@ -514,7 +520,7 @@ class Processor(
         /** d,s */     val stackRelative = addressModeSimple("d,s", "Stack Relative", AddressModeResult.ADDRESS_0, rS)
         /** (d,s),y */ val stackRelativeIndirectIndexed = addressModeIndirect("(d,s),y", "Stack Relative Indirect Indexed", { it + rS.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR, { it + rY.get() }, AddressModeResult.FULLADDRESS)
         /** A */       val accumulator = addressModeRegister("A", "Accumulator", AddressModeResult.ACCUMULATOR, rA)
-        /** xyc */     val blockMove = noAddressMode("xyc", "Block Move", "Block Move does not provide any value")
+        /** xyc */     val blockMove = addressModeSimple("xyc", "Block Move", AddressModeResult.IMMEDIATE)
         /** i */       val implied = noAddressMode("i", "Implied", "Implied does not provide any value")
         /** s */       val stack = noAddressMode("s", "Stack", "Stack does not fetch any value")
         /**  */        val addressNull = noAddressMode("", "", "no valid addressMode")
