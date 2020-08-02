@@ -49,7 +49,7 @@ abstract class OperationTest(
         a: Int = 0,
         x: Int = 0, y: Int = 0,
         d: Int = 0,
-        s: Int = 0) {
+        s: Int = if (mode == ProcessorMode.EMULATION) 0x0100 else 0x0000) {
 
         processor.mode = mode
 
@@ -75,7 +75,7 @@ abstract class OperationTest(
                       a: Int = 0,
                       x: Int = 0, y: Int = 0,
                       d: Int = 0,
-                      s: Int = 0) {
+                      s: Int = if (mode == ProcessorMode.EMULATION) 0x0100 else 0x0000) {
 
         assertEquals(symbol, operation.symbol, "wrong symbol")
 

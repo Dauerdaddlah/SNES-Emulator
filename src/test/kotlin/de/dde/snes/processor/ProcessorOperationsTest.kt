@@ -206,8 +206,30 @@ class ProcessorOperationsTest {
     ) {
         @Test
         fun test() {
-            prepareProcessor(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6, s = 7)
-            testOperation(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6, s = 7)
+            prepareProcessor(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6)
+            testOperation(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6)
+        }
+    }
+
+    @Nested
+    inner class Sbc : OperationTest(
+        "SBC",
+        { sbc }
+    ) {
+        @Test
+        fun test() {
+            TODO()
+        }
+    }
+
+    @Nested
+    inner class Stp : OperationTest(
+        "STP",
+        { stp }
+    ) {
+        @Test
+        fun test() {
+            TODO()
         }
     }
 }

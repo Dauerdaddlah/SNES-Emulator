@@ -791,7 +791,7 @@ class Processor(
         val stp = OperationSimple0("STP", "Stop the clock") { TODO() }
         val stx = OperationSimpleAddress("STX", "Store X") { bank, address -> write(bank, address, rX) }
         val sty = OperationSimpleAddress("STY", "Store Y") { bank, address -> write(bank, address, rY) }
-        val stz = OperationSimpleAddress("STZ", "Store Zero") { bank, address -> write(bank, address, 0) }
+        val stz = OperationSimpleAddress("STZ", "Store Zero") { bank, address -> write(bank, address, 0, rA.size) }
         val tax = OperationSimple0("TAX", "Transfer A to X") { transfer(rA, rX) }
         val tay = OperationSimple0("TAY", "Transfer A to Y") { transfer(rA, rY) }
         val tcd = OperationSimple0("TCD", "Transfer A to D") { transfer(rA, rD) }

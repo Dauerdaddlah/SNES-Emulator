@@ -769,4 +769,164 @@ class ProcessorOperationsRegisterTest {
             }
         }
     }
+
+    @Nested
+    inner class Sta : OperationTest(
+        "STA",
+        { sta }
+    ) {
+        @Nested
+        inner class Sta8 : Test8Bit() {
+            @Test
+            fun store() {
+                prepareProcessor(a = 0x11, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+
+                testOperation(a = 0x11, dbr = 0x22)
+            }
+
+            @Test
+            fun storeOnly1Byte() {
+                prepareProcessor(a = 0x9911, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+
+                testOperation(a = 0x9911, dbr = 0x22)
+            }
+        }
+
+        @Nested
+        inner class Sta16 : Test16Bit() {
+            @Test
+            fun store() {
+                prepareProcessor(a = 0x9911, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+                memory.expectWrite(0x22, 0x3345, 0x99)
+
+                testOperation(a = 0x9911, dbr = 0x22)
+            }
+        }
+    }
+
+    @Nested
+    inner class Stx : OperationTest(
+        "STX",
+        { stx }
+    ) {
+        @Nested
+        inner class Sta8 : Test8BitIndex() {
+            @Test
+            fun store() {
+                prepareProcessor(x = 0x11, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+
+                testOperation(x = 0x11, dbr = 0x22)
+            }
+        }
+
+        @Nested
+        inner class Stx16 : Test16BitIndex() {
+            @Test
+            fun store() {
+                prepareProcessor(x = 0x9911, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+                memory.expectWrite(0x22, 0x3345, 0x99)
+
+                testOperation(x = 0x9911, dbr = 0x22)
+            }
+        }
+    }
+
+    @Nested
+    inner class Sty : OperationTest(
+        "STY",
+        { sty }
+    ) {
+        @Nested
+        inner class Sta8 : Test8BitIndex() {
+            @Test
+            fun store() {
+                prepareProcessor(y = 0x11, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+
+                testOperation(y = 0x11, dbr = 0x22)
+            }
+        }
+
+        @Nested
+        inner class Sty16 : Test16BitIndex() {
+            @Test
+            fun store() {
+                prepareProcessor(y = 0x9911, dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x11)
+                memory.expectWrite(0x22, 0x3345, 0x99)
+
+                testOperation(y = 0x9911, dbr = 0x22)
+            }
+        }
+    }
+
+    @Nested
+    inner class Stz : OperationTest(
+        "STZ",
+        { stz }
+    ) {
+        @Nested
+        inner class Stz8 : Test8Bit() {
+            @Test
+            fun store() {
+                prepareProcessor(dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0x0)
+
+                testOperation(dbr = 0x22)
+            }
+        }
+
+        @Nested
+        inner class Stz16 : Test16Bit() {
+            @Test
+            fun store() {
+                prepareProcessor(dbr = 0x22)
+
+                addressMode.result = AddressModeResult.ADDRESS_DBR
+                addressMode.fetchNext(0x3344)
+
+                memory.expectWrite(0x22, 0x3344, 0)
+                memory.expectWrite(0x22, 0x3345, 0)
+
+                testOperation(dbr = 0x22)
+            }
+        }
+    }
 }
