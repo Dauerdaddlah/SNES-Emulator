@@ -385,6 +385,11 @@ class Processor(
 
     private fun pullStack(r: Register) {
         r.set(pullStack(r.size))
+
+        if (r !is StackPointer) {
+            rP.zero = r.zero
+            rP.negative = r.negative
+        }
     }
 
     fun pullStack(size: Int): Int {
