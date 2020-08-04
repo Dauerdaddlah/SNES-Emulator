@@ -10,7 +10,7 @@ open class Register8Bit16Bit(
             val newR = if (value) r16 else r8
 
             if (newR !== r) {
-                newR.set(r.get())
+                updateR(r, newR)
                 r = newR
             }
         }
@@ -21,6 +21,10 @@ open class Register8Bit16Bit(
 
     override val negative: Boolean
         get() = r.negative
+
+    protected open fun updateR(oldR: Register, newR: Register) {
+        newR.set(oldR.get())
+    }
 
     override fun reset() {
         r.reset()

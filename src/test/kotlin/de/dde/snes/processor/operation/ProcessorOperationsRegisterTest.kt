@@ -1,6 +1,7 @@
 package de.dde.snes.processor.operation
 
 import de.dde.snes.processor.addressmode.AddressModeResult
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -926,6 +927,834 @@ class ProcessorOperationsRegisterTest {
                 memory.expectWrite(0x22, 0x3345, 0)
 
                 testOperation(dbr = 0x22)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tax : OperationTest(
+        "TAX",
+        { tax }
+    ) {
+        @Nested
+        inner class Tax8 : Test8BitIndex() {
+            @Test
+            fun transfer_8To8() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, x = 0x44)
+
+                testOperation(a = 0x1122, x = 0x22)
+            }
+
+            @Test
+            fun transfer_16To8() {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = 0x1122, x = 0x44)
+
+                testOperation(a = 0x1122, x = 0x22)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(a: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = a)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a, x = a)
+            }
+        }
+
+        @Nested
+        inner class Tax16 : Test16BitIndex() {
+            @Test
+            fun transfer_8To16() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, x = 0x3344)
+
+                testOperation(a = 0x1122, x = 0x1122)
+            }
+
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = 0x1122, x = 0x3344)
+
+                testOperation(a = 0x1122, x = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(a: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = a)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a, x = a)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tay : OperationTest(
+        "TAY",
+        { tay }
+    ) {
+        @Nested
+        inner class Tax8 : Test8BitIndex() {
+            @Test
+            fun transfer_8To8() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, y = 0x44)
+
+                testOperation(a = 0x1122, y = 0x22)
+            }
+
+            @Test
+            fun transfer_16To8() {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = 0x1122, y = 0x44)
+
+                testOperation(a = 0x1122, y = 0x22)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(a: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = a)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a, y = a)
+            }
+        }
+
+        @Nested
+        inner class Tay16 : Test16BitIndex() {
+            @Test
+            fun transfer_8To16() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, y = 0x3344)
+
+                testOperation(a = 0x1122, y = 0x1122)
+            }
+
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = 0x1122, y = 0x3344)
+
+                testOperation(a = 0x1122, y = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(a: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = a)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a, y = a)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tcd : OperationTest(
+        "TCD",
+        { tcd }
+    ) {
+        @Test
+        fun transfer_A8() {
+            prepareStatus(a16 = false)
+            prepareProcessor(a = 0x1122, d = 0x3344)
+
+            testOperation(a = 0x1122, d = 0x1122)
+        }
+        @Test
+        fun transfer_A16() {
+            prepareStatus(a16 = true)
+            prepareProcessor(a = 0x1122, d = 0x3344)
+
+            testOperation(a = 0x1122, d = 0x1122)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            "0x0000, true, false",
+            "0x7FFF, false, false",
+            "0x8000, false, true",
+            "0xFFFF, false, true"
+        )
+        fun status(a: Int, zero: Boolean, negative: Boolean) {
+            prepareStatus(a16 = true)
+            prepareProcessor(a = a)
+
+            status.zero = zero
+            status.negative = negative
+
+            testOperation(a = a, d = a)
+        }
+    }
+
+    @Nested
+    inner class Tcs : OperationTest(
+        "TCS",
+        { tcs }
+    ) {
+        @Nested
+        inner class Tcs8 {
+            @BeforeEach
+            fun initialize() {
+                prepareStatus(s16 = false)
+            }
+
+            @Test
+            fun transfer() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, s = 0x0144)
+
+                testOperation(a = 0x1122, s = 0x0122)
+            }
+        }
+
+        @Nested
+        inner class Tcs16 {
+            @BeforeEach
+            fun initialize() {
+                prepareStatus(s16 = true)
+            }
+
+            @Test
+            fun transfer_A8() {
+                prepareStatus(a16 = false)
+                prepareProcessor(a = 0x1122, s = 0x3344)
+
+                testOperation(a = 0x1122, s = 0x1122)
+            }
+            @Test
+            fun transfer_A16() {
+                prepareStatus(a16 = true)
+                prepareProcessor(a = 0x1122, s = 0x3344)
+
+                testOperation(a = 0x1122, s = 0x1122)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tdc : OperationTest(
+        "TDC",
+        { tdc }
+    ) {
+        @Nested
+        inner class Tdc8 : Test8Bit() {
+            @Test
+            fun transfer() {
+                prepareProcessor(d = 0x22, a = 0x44)
+
+                testOperation(d = 0x22, a = 0x22)
+            }
+
+            @Test
+            fun transferAlways16() {
+                prepareProcessor(d = 0x1122, a = 0x3344)
+
+                testOperation(d = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(d: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(d = d)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(d = d, a = d)
+            }
+        }
+
+        @Nested
+        inner class Tdc16 : Test16Bit() {
+            @Test
+            fun transfer() {
+                prepareProcessor(d = 0x1122, a = 0x3344)
+
+                testOperation(d = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(d: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(d = d)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(d = d, a = d)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tsc : OperationTest(
+        "TSC",
+        { tsc }
+    ) {
+        @BeforeEach
+        fun initialize() {
+            prepareStatus(s16 = true)
+        }
+
+        @Nested
+        inner class Tsc8 : Test8Bit() {
+            @Test
+            fun transferAlways16() {
+                prepareProcessor(s = 0x1122, a = 0x3344)
+
+                testOperation(s = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(s: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(s = s)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(s = s, a = s)
+            }
+        }
+
+        @Nested
+        inner class Tsc16 : Test16Bit() {
+            @Test
+            fun transfer() {
+                prepareProcessor(s = 0x1122, a = 0x3344)
+
+                testOperation(s = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(s: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(s = s)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(s = s, a = s)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tsx : OperationTest(
+        "TSX",
+        { tsx }
+    ) {
+        @Nested
+        inner class Tsx8 : Test8BitIndex() {
+            @Test
+            fun transfer_8To8() {
+                prepareStatus(s16 = false)
+                prepareProcessor(s = 0x0122, x = 0x44)
+
+                testOperation(s = 0x0122, x = 0x22)
+            }
+
+            @Test
+            fun transfer_16To8() {
+                prepareStatus(s16 = true)
+                prepareProcessor(s = 0x1122, x = 0x44)
+
+                testOperation(s = 0x1122, x = 0x22)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(s: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(s16 = false)
+                prepareProcessor(s = s)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(s = 0x0100 or s, x = s)
+            }
+        }
+
+        @Nested
+        inner class Tsx16 : Test16BitIndex() {
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(s16 = true)
+                prepareProcessor(s = 0x1122, x = 0x3344)
+
+                testOperation(s = 0x1122, x = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(s: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(s16 = true)
+                prepareProcessor(s = s)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(s = s, x = s)
+            }
+        }
+    }
+
+    @Nested
+    inner class Txa : OperationTest(
+        "TXA",
+        { txa }
+    ) {
+        @Nested
+        inner class Txa8 : Test8Bit() {
+            @Test
+            fun transfer_8To8() {
+                prepareStatus(i16 = false)
+                prepareProcessor(x = 0x22, a = 0x44)
+
+                testOperation(x = 0x22, a = 0x22)
+            }
+
+            @Test
+            fun transfer_16To8() {
+                prepareStatus(i16 = true)
+                prepareProcessor(x = 0x1122, a = 0x44)
+
+                testOperation(x = 0x1122, a = 0x22)
+            }
+
+            @Test
+            fun transfer_onlyLowByte() {
+                prepareStatus(i16 = true)
+                prepareProcessor(x = 0x1122, a = 0x3344)
+
+                testOperation(x = 0x1122, a = 0x3322)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(x: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(i16 = false)
+                prepareProcessor(x = x)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(x = x, a = x)
+            }
+        }
+
+        @Nested
+        inner class Txa16 : Test16Bit() {
+            @Test
+            fun transfer_8To16() {
+                prepareStatus(i16 = false)
+                prepareProcessor(x = 0x22, a = 0x3344)
+
+                testOperation(x = 0x22, a = 0x0022)
+            }
+
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(i16 = true)
+                prepareProcessor(x = 0x1122, a = 0x3344)
+
+                testOperation(x = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(x: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(i16 = true)
+                prepareProcessor(x = x)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(x = x, a = x)
+            }
+        }
+    }
+
+    @Nested
+    inner class Txs : OperationTest(
+        "TXS",
+        { txs }
+    ) {
+        @Nested
+        inner class Txs8 {
+            @BeforeEach
+            fun initialize() {
+                prepareStatus(s16 = false)
+            }
+
+            @Test
+            fun transfer() {
+                prepareStatus(i16 = false)
+                prepareProcessor(x = 0x22, s = 0x0144)
+
+                testOperation(x = 0x22, s = 0x0122)
+            }
+        }
+
+        @Nested
+        inner class Txs16 {
+            @BeforeEach
+            fun initialize() {
+                prepareStatus(s16 = true)
+            }
+
+            @Test
+            fun transfer_8To16() {
+                prepareStatus(i16 = false)
+                prepareProcessor(x = 0x22, s = 0x3344)
+
+                testOperation(x = 0x22, s = 0x0022)
+            }
+
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(i16 = true)
+                prepareProcessor(x = 0x1122, s = 0x3344)
+
+                testOperation(x = 0x1122, s = 0x1122)
+            }
+        }
+    }
+
+    @Nested
+    inner class Txy : OperationTest(
+        "TXY",
+        { txy }
+    ) {
+        @Nested
+        inner class Txy8 : Test8BitIndex() {
+            @Test
+            fun transfer() {
+                prepareProcessor(x = 0x22, y = 0x44)
+
+                testOperation(x = 0x22, y = 0x22)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(x: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(x = x)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(x = x, y = x)
+            }
+        }
+
+        @Nested
+        inner class Txy16 : Test16BitIndex() {
+            @Test
+            fun transfer() {
+                prepareProcessor(x = 0x1122, y = 0x3344)
+
+                testOperation(x = 0x1122, y = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(x: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(x = x)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(x = x, y = x)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tya : OperationTest(
+        "TYA",
+        { tya }
+    ) {
+        @Nested
+        inner class Tya8 : Test8Bit() {
+            @Test
+            fun transfer_8To8() {
+                prepareStatus(i16 = false)
+                prepareProcessor(y = 0x22, a = 0x44)
+
+                testOperation(y = 0x22, a = 0x22)
+            }
+
+            @Test
+            fun transfer_16To8() {
+                prepareStatus(i16 = true)
+                prepareProcessor(y = 0x1122, a = 0x44)
+
+                testOperation(y = 0x1122, a = 0x22)
+            }
+
+            @Test
+            fun transfer_onlyLowByte() {
+                prepareStatus(i16 = true)
+                prepareProcessor(y = 0x1122, a = 0x3344)
+
+                testOperation(y = 0x1122, a = 0x3322)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(y: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(i16 = false)
+                prepareProcessor(y = y)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(y = y, a = y)
+            }
+        }
+
+        @Nested
+        inner class Tya16 : Test16Bit() {
+            @Test
+            fun transfer_8To16() {
+                prepareStatus(i16 = false)
+                prepareProcessor(y = 0x22, a = 0x3344)
+
+                testOperation(y = 0x22, a = 0x0022)
+            }
+
+            @Test
+            fun transfer_16To16() {
+                prepareStatus(i16 = true)
+                prepareProcessor(y = 0x1122, a = 0x3344)
+
+                testOperation(y = 0x1122, a = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(y: Int, zero: Boolean, negative: Boolean) {
+                prepareStatus(i16 = true)
+                prepareProcessor(y = y)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(y = y, a = y)
+            }
+        }
+    }
+
+    @Nested
+    inner class Tyx : OperationTest(
+        "TYX",
+        { tyx }
+    ) {
+        @Nested
+        inner class Tyx8 : Test8BitIndex() {
+            @Test
+            fun transfer() {
+                prepareProcessor(y = 0x22, x = 0x44)
+
+                testOperation(y = 0x22, x = 0x22)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x00, true, false",
+                "0x7F, false, false",
+                "0x80, false, true",
+                "0xFF, false, true"
+            )
+            fun status(y: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(y = y)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(y = y, x = y)
+            }
+        }
+
+        @Nested
+        inner class Tyx16 : Test16BitIndex() {
+            @Test
+            fun transfer() {
+                prepareProcessor(y = 0x1122, x = 0x3344)
+
+                testOperation(y = 0x1122, x = 0x1122)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0x0000, true, false",
+                "0x7FFF, false, false",
+                "0x8000, false, true",
+                "0xFFFF, false, true"
+            )
+            fun status(y: Int, zero: Boolean, negative: Boolean) {
+                prepareProcessor(y = y)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(y = y, x = y)
+            }
+        }
+    }
+
+    @Nested
+    inner class Xba : OperationTest(
+        "XBA",
+        { xba }
+    ) {
+        @Nested
+        inner class Xba8 : Test8Bit() {
+            @Test
+            fun transfer() {
+                prepareProcessor(a = 0x1122)
+
+                testOperation(a = 0x2211)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, false, true",
+                "0x0011, 0x1100, false, true",
+                "0x8011, 0x1180, true, false"
+            )
+            fun status(a1: Int, a2: Int, negative: Boolean, zero: Boolean) {
+                prepareProcessor(a = a1)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a2)
+            }
+        }
+
+        @Nested
+        inner class Xba16 : Test16Bit() {
+            @Test
+            fun transfer() {
+                prepareProcessor(a = 0x1122)
+
+                testOperation(a = 0x2211)
+            }
+
+            @ParameterizedTest
+            @CsvSource(
+                "0, 0, false, true",
+                "0x0011, 0x1100, false, true",
+                "0x8011, 0x1180, true, false",
+                "0x1234, 0x3412, false, false"
+            )
+            fun status(a1: Int, a2: Int, negative: Boolean, zero: Boolean) {
+                prepareProcessor(a = a1)
+
+                status.zero = zero
+                status.negative = negative
+
+                testOperation(a = a2)
             }
         }
     }

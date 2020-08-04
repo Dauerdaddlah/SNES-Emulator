@@ -5,6 +5,14 @@ import de.dde.snes.highByte
 import de.dde.snes.lowByte
 
 class Accumulator : Register8Bit16Bit() {
+    override fun updateR(oldR: Register, newR: Register) {
+        if(oldR.size == 2) {
+            super.updateR(oldR, newR)
+        } else {
+            ensureR16()
+        }
+    }
+
     fun getFull(): Int {
         ensureR16()
         return r16.get()

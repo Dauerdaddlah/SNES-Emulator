@@ -232,4 +232,73 @@ class ProcessorOperationsTest {
             TODO()
         }
     }
+
+    @Nested
+    inner class Wai : OperationTest(
+        "WAI",
+        { wai }
+    ) {
+        @Test
+        fun test() {
+            TODO()
+        }
+    }
+
+    @Nested
+    inner class Wdm : OperationTest(
+        "WDM",
+        { wdm }
+    ) {
+        @Test
+        fun test() {
+            prepareProcessor(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6)
+            testOperation(pc = 1, pbr = 2, dbr = 3, a = 4, x = 5, y = 6)
+        }
+    }
+
+    @Nested
+    inner class Xce : OperationTest(
+        "XCE",
+        { xce }
+    ) {
+        @Test
+        fun exchangeEmulationToNative() {
+            mode = ProcessorMode.EMULATION
+            status.carry = false
+            prepareProcessor()
+
+            status.carry = true
+            mode = ProcessorMode.NATIVE
+            testOperation(s = 0x0100)
+        }
+
+        @Test
+        fun exchangeNativeToEmulation() {
+            mode = ProcessorMode.NATIVE
+            status.carry = true
+            prepareProcessor()
+
+            status.carry = false
+            mode = ProcessorMode.EMULATION
+            testOperation(s = 0x0100)
+        }
+
+        @Test
+        fun doNothingEmulation() {
+            mode = ProcessorMode.EMULATION
+            status.carry = true
+            prepareProcessor()
+
+            testOperation()
+        }
+
+        @Test
+        fun doNothingNative() {
+            mode = ProcessorMode.NATIVE
+            status.carry = false
+            prepareProcessor()
+
+            testOperation()
+        }
+    }
 }

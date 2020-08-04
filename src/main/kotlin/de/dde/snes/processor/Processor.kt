@@ -374,12 +374,31 @@ class Processor(
         }
     }
 
-    fun transfer(rFrom: Register, rTo: Register) {
+    fun transfer(rFrom: Register, rTo: Register, full: Boolean = false) {
+        val resizeFrom = (full || rTo.size == 2) && rFrom.size == 1
+        val resizeTo = full && rTo.size == 1
+
+        if (resizeFrom && rFrom is Register8Bit16Bit) {
+            rFrom.size16Bit = true
+        }
+
+        if (resizeTo && rTo is Register8Bit16Bit) {
+            rTo.size16Bit = true
+        }
+
         rTo.set(rFrom.get())
 
         if (rTo != rS) {
             rP.negative = rTo.negative
             rP.zero = rTo.zero
+        }
+
+        if (resizeFrom && rFrom is Register8Bit16Bit) {
+            rFrom.size16Bit = false
+        }
+
+        if (resizeTo && rTo is Register8Bit16Bit) {
+            rTo.size16Bit = false
         }
     }
 
@@ -414,8 +433,12 @@ class Processor(
 
     fun xba() {
         rA.xba()
+        val size16 = rA.size16Bit
+
+        rA.size16Bit = false
         rP.zero = rA.zero
         rP.negative = rA.negative
+        rA.size16Bit = size16
     }
 
     fun xce() {
@@ -794,12 +817,12 @@ class Processor(
         val stz = OperationSimpleAddress("STZ", "Store Zero") { bank, address -> write(bank, address, 0, rA.size) }
         val tax = OperationSimple0("TAX", "Transfer A to X") { transfer(rA, rX) }
         val tay = OperationSimple0("TAY", "Transfer A to Y") { transfer(rA, rY) }
-        val tcd = OperationSimple0("TCD", "Transfer A to D") { transfer(rA, rD) }
-        val tcs = OperationSimple0("TCS", "Transfer A to S") { transfer(rA, rS) }
-        val tdc = OperationSimple0("TDC", "Transfer D to A") { transfer(rD, rA) }
+        val tcd = OperationSimple0("TCD", "Transfer A to D") { transfer(rA, rD, true) }
+        val tcs = OperationSimple0("TCS", "Transfer A to S") { transfer(rA, rS, true) }
+        val tdc = OperationSimple0("TDC", "Transfer D to A") { transfer(rD, rA, true) }
         val trb = OperationSetAddress("TRB", "Test and Reset Bits", rA) { r, _, value -> testAndSetBits(r, value, false) }
         val tsb = OperationSetAddress("TSB", "Test and Set Bits", rA) { r, _, value -> testAndSetBits(r, value, true) }
-        val tsc = OperationSimple0("TSC", "Transfer S to A") { transfer(rS, rA) }
+        val tsc = OperationSimple0("TSC", "Transfer S to A") { transfer(rS, rA, true) }
         val tsx = OperationSimple0("TSX", "Transfer S to X") { transfer(rS, rX) }
         val txa = OperationSimple0("TXA", "Transfer X to A") { transfer(rX, rA) }
         val txs = OperationSimple0("TXS", "Transfer X to S") { transfer(rX, rS) }
