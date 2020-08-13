@@ -202,82 +202,233 @@ class Processor(
     }
 
     fun addCarry(r: Register, value1: Int, value2: Int): Int {
-        // TODO make pretty, currently its just copied from snes9x
-        var v = if (rP.decimal) {
-            var res = (value1 and 0xF) + (value2 and 0xF) + (if (rP.carry) 0x1 else 0)
-            if (res > 0x9) res += 0x6
-            rP.carry = res > 0xF
-            res = (value1 and 0xF0) + (value2 and 0xF0) + (if (rP.carry) 0x10 else 0) + (res and 0xF)
-            if (r.size == 2) {
-                if (res > 0x9F) res += 0x60
-                rP.carry = res > 0xFF
-                res = (value1 and 0xF00) + (value2 and 0xF00) + (if (rP.carry) 0x100 else 0) + (res and 0xFF)
-                if (res > 0x9FF) res += 0x600
-                rP.carry = res > 0xFFF
-                res = (value1 and 0xF000) + (value2 and 0xF000) + (if (rP.carry) 0x1000 else 0) + (res and 0xFFF)
-            }
-            res
-        } else {
-            value1 + value2 + if (rP.carry) 1 else 0
-        }
+        val ret = if (r.size == 1) Algorithms.adc8(value1, rP.get(), value2)
+                                else Algorithms.adc16(value1, rP.get(), value2)
 
-        // (A.value xor value).inv() the sign-bit is 1 only if both A and value have the same sign
-        // (A.value xor v) the sign-bit is set, if A (the start) and v (the end) have different signs
-        // so if these two are combined using and, a set sign-bit shows, that A overflowed
-        rP.overflow = r.isNegative((value1 xor value2).inv() and (value1 xor v))
-
-        if (rP.decimal) {
-            if (r.size == 1 && v > 0x9F) v += 0x60
-            else if (r.size == 2 && v > 0x9FFF) v += 0x6000
-        }
-
-        val vTrim = r.trimValue(v)
-
-        rP.negative = r.isNegative(v)
-        rP.zero = vTrim == 0
-        rP.carry = vTrim != v
-
-        return vTrim
+        rP.set(ret.second)
+        return ret.first
     }
 
     fun subtractCarry(r: Register, value1: Int, value2: Int): Int {
-        // TODO make pretty, currently its just copied from snes9x
+        val ret = if (r.size == 1) Algorithms.sbc8(value1, rP.get(), value2)
+                        else Algorithms.sbc16(value1, rP.get(), value2)
 
-        // if carry is set, the calculation is as expected (i. e. 0x9 - 0x6 = 0x3)
-        // without carry, we have to subtract one more (i. e. 0x9 - 0x6 = 0x2)
+        rP.set(ret.second)
+        return ret.first
+    }
 
-        val valueInv = value2.inv()
-        var v = if (rP.decimal) {
-            var result = (value1 and 0xf) + (valueInv and 0xf) + (if (rP.carry) 0x1 else 0)
-            if(result <= 0xf) result -= 0x6
-            rP.carry = result > 0x000f
-            result = (value1 and 0xf0) + (valueInv and 0xf0) + (if (rP.carry) 0x10 else 0) + (result and 0x000f)
+    // TODO replace by own implementation
+    // adapted from algorithms.cpp
+    object Algorithms {
+        // These assume that host machine uses two's complement
 
-            if (r.size == 2) {
-                if (result <= 0xff) result -= 0x60
-                rP.carry = result > 0xff
-                result = (value1 and  0xf00) + (valueInv and 0xf00) + (if (rP.carry) 0x100 else 0) + (result and 0x00ff)
-                if (result <= 0xfff) result -= 0x600
-                rP.carry = result > 0xfff
-                result = (value1 and 0xf000) + (valueInv and 0xf000) + (if (rP.carry) 0x1000 else 0) + (result and 0x0fff)
+        private const val n80 = 0x80
+        private const val v40 = 0x40
+        private const val d08 = 0x08
+        private const val z02 = 0x02
+        private const val c01 = 0x01
+
+        fun adc8( a: Int, pStart: Int, operand: Int ): Pair<Int, Int>
+        {
+            var p = pStart
+            var carry = if((p and c01) != 0) 1 else 0
+
+            p = p and (n80 or v40 or z02 or c01).inv()
+
+            var result: Int
+
+            if ((p and d08) == 0)
+            {
+                result = a + operand + carry
             }
-            result
-        } else {
-            value1 + r.trimValue(valueInv) + (if (rP.carry) 1 else 0)
+            else
+            {
+                result = (a and 0x0F)+(operand and 0x0F)+carry
+                if (result > 9)
+                    result += 6
+
+                carry = if(result > 0x0F) 1 else 0
+                result = (a and 0xF0)+(operand and 0xF0)+(result and 0x0F)+(carry * 0x10)
+            }
+
+            // signs of a and operand match, and sign of result doesn't
+            if ((a and 0x80) == (operand and 0x80) && (a and 0x80) != (result and 0x80))
+                p = p or v40
+
+            if ((p and d08) != 0 && result > 0x9F)
+                result += 0x60
+
+            if (result > 0xFF)
+                p = p or c01
+
+            if (result and 0x80 != 0)
+                p = p or n80
+
+            if ((result and 0xFF) == 0)
+                p = p or z02
+
+            return (result and 0xFF) to p
         }
 
-        rP.overflow = r.isNegative((value1 xor valueInv).inv() and (value1 xor v))
-        if (rP.decimal) {
-            if (r.size == 1 && v <= 0xff) v -= 0x60 else if (r.size == 2 && v <= 0xFFFF) v -= 0x6000
+        fun sbc8( a: Int, pStart: Int, operandStart: Int ): Pair<Int, Int>
+        {
+            var p = pStart
+            var operand = operandStart
+
+            var carry = if((p and c01) != 0) 1 else 0
+
+            p = p and (n80 or v40 or z02 or c01).inv()
+
+            var result: Int
+
+            operand = operand xor 0xFF
+
+            if ((p and d08) == 0)
+            {
+                result = a + operand + carry
+            }
+            else
+            {
+                result = (a and 0x0F)+(operand and 0x0F)+carry
+                if (result < 0x10)
+                    result -= 6
+
+                carry = if(result > 0x0F) 1 else 0
+                result = (a and 0xF0)+(operand and 0xF0)+(result and 0x0F)+(carry * 0x10)
+            }
+
+            // signs of a and operand match, and sign of result doesn't
+            if ((a and 0x80) == (operand and 0x80) && (a and 0x80) != (result and 0x80))
+                p = p or v40
+
+            if ((p and d08) != 0 && result < 0x100)
+                result -= 0x60
+
+            if (result > 0xFF)
+                p = p or c01
+
+            if ((result and 0x80) != 0)
+                p = p or n80
+
+            if ((result and 0xFF) == 0)
+                p = p or z02
+
+            return (result and 0xFF) to p
         }
 
-        val vTrim = r.trimValue(v)
+        fun adc16( a: Int, pStart: Int, operand: Int ): Pair<Int, Int>
+        {
+            var p = pStart
 
-        rP.carry = v != vTrim
-        rP.zero = vTrim == 0
-        rP.negative = r.isNegative(v)
+            var carry = if((p and c01) != 0) 1 else 0
 
-        return vTrim
+            p = p and (n80 or v40 or z02 or c01).inv()
+
+            var result: Int
+
+            if ((p and d08) == 0)
+            {
+                result = a + operand + carry
+            }
+            else
+            {
+                result = (a and 0x000F)+(operand and 0x000F)+carry
+                if (result > 0x0009)
+                    result += 0x0006
+
+                carry = if(result > 0x000F) 1 else 0
+
+                result = (a and 0x00F0)+(operand and 0x00F0)+(result and 0x000F)+carry * 0x10
+                if (result > 0x009F)
+                    result += 0x0060
+
+                carry = if(result > 0x00FF) 1 else 0
+
+                result = (a and 0x0F00)+(operand and 0x0F00)+(result and 0x00FF)+carry * 0x100
+                if (result > 0x09FF)
+                    result += 0x0600
+
+                carry = if(result > 0x0FFF) 1 else 0
+
+                result = (a and 0xF000)+(operand and 0xF000)+(result and 0x0FFF)+carry * 0x1000
+            }
+
+            // signs of a and operand match, and sign of result doesn't
+            if ((a and 0x8000) == (operand and 0x8000) && (a and 0x8000) != (result and 0x8000))
+                p = p or v40
+
+            if ((p and d08) != 0 && result > 0x9FFF)
+                result += 0x6000
+
+            if (result > 0xFFFF)
+                p = p or c01
+
+            if (result and 0x8000 != 0)
+                p = p or n80
+
+            if ((result and 0xFFFF) == 0)
+                p = p or z02
+
+            return (result and 0xFFFF) to p
+        }
+
+        fun sbc16( a: Int, pStart: Int, operandStart: Int ): Pair<Int, Int>
+        {
+            var p = pStart
+
+            var carry = if((p and c01) != 0) 1 else 0
+
+            p = p and (n80 or v40 or z02 or c01).inv()
+
+            var result: Int
+
+            val operand = operandStart xor 0xFFFF
+
+            if ((p and d08) == 0)
+            {
+                result = a + operand + carry
+            }
+            else
+            {
+                result = (a and 0x000F)+(operand and 0x000F)+carry
+                if (result < 0x0010)
+                    result -= 0x0006
+
+                carry = if(result > 0x000F) 1 else 0
+
+                result = (a and 0x00F0)+(operand and 0x00F0)+(result and 0x000F)+carry * 0x10
+                if (result < 0x0100)
+                    result -= 0x0060
+
+                carry = if(result > 0x00FF) 1 else 0
+
+                result = (a and 0x0F00)+(operand and 0x0F00)+(result and 0x00FF)+carry * 0x100
+                if (result < 0x1000)
+                    result -= 0x0600
+
+                carry = if(result > 0x0FFF) 1 else 0
+
+                result = (a and 0xF000)+(operand and 0xF000)+(result and 0x0FFF)+carry * 0x1000
+            }
+
+            // signs of addends match, and sign of result doesn't
+            if (((a xor operand) and 0x8000) == 0 && ((a xor result) and 0x8000) != 0)
+                p = p or v40
+
+            if ((p and d08) != 0 && result < 0x10000)
+                result -= 0x6000
+
+            if (result > 0xFFFF)
+                p = p or c01
+
+            if (result and 0x8000 != 0)
+                p = p or n80
+
+            if ((result and 0xFFFF) == 0)
+                p = p or z02
+
+            return (result and 0xFFFF) to p
+        }
     }
 
     fun and(r: Register, value1: Int, value2: Int): Int {

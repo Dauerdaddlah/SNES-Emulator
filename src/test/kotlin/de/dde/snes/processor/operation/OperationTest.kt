@@ -75,23 +75,24 @@ abstract class OperationTest(
                       a: Int = 0,
                       x: Int = 0, y: Int = 0,
                       d: Int = 0,
-                      s: Int = if (mode == ProcessorMode.EMULATION) 0x0100 else 0x0000) {
+                      s: Int = if (mode == ProcessorMode.EMULATION) 0x0100 else 0x0000,
+                      prefix: String = "") {
 
-        assertEquals(symbol, operation.symbol, "wrong symbol")
+        assertEquals(symbol, operation.symbol, "$prefix wrong symbol")
 
         operation.execute(addressMode)
 
         assertAll(
-            { assertEquals(pc, processor.rPC.get(), "wrong PC") },
-            { assertEquals(pbr, processor.rPBR.get(), "wrong PBR") },
-            { assertEquals(dbr, processor.rDBR.get(), "wrong dbr") },
-            { assertEquals(mode, processor.mode, "wrong processormode") },
-            { assertEquals(a, processor.rA.getFull(), "wrong A") },
-            { assertEquals(x, processor.rX.get(), "wrong X") },
-            { assertEquals(y, processor.rY.get(), "wrong Y") },
-            { assertEquals(d, processor.rD.get(), "wrong D") },
-            { assertEquals(s, processor.rS.get(), "wrong S") },
-            { assertEquals(status.get(), processor.rP.get(), "wrong P") },
+            { assertEquals(pc, processor.rPC.get(), "$prefix wrong PC") },
+            { assertEquals(pbr, processor.rPBR.get(), "$prefix wrong PBR") },
+            { assertEquals(dbr, processor.rDBR.get(), "$prefix wrong dbr") },
+            { assertEquals(mode, processor.mode, "$prefix wrong processormode") },
+            { assertEquals(a, processor.rA.getFull(), "$prefix wrong A") },
+            { assertEquals(x, processor.rX.get(), "$prefix wrong X") },
+            { assertEquals(y, processor.rY.get(), "$prefix wrong Y") },
+            { assertEquals(d, processor.rD.get(), "$prefix wrong D") },
+            { assertEquals(s, processor.rS.get(), "$prefix wrong S") },
+            { assertEquals(status.get(), processor.rP.get(), "$prefix wrong P") },
             {
                 memory.checkResult()
                 addressMode.checkResult()
