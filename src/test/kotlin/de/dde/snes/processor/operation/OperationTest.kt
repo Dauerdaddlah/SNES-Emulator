@@ -15,7 +15,7 @@ abstract class OperationTest(
     operation: Processor.Operations.() -> Operation
 ) {
     val memory: TestMemory = TestMemory()
-    private val processor: Processor = Processor(memory)
+    protected val processor: Processor = Processor(memory)
     val addressMode: TestAddressMode = TestAddressMode()
     val status: StatusRegister = StatusRegister()
     var mode: ProcessorMode = ProcessorMode.EMULATION

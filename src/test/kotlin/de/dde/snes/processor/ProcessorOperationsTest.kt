@@ -2,6 +2,8 @@ package de.dde.snes.processor
 
 import de.dde.snes.processor.addressmode.AddressModeResult
 import de.dde.snes.processor.operation.OperationTest
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -13,9 +15,145 @@ class ProcessorOperationsTest {
         "BRK",
         { brk }
     ) {
-        @Test
-        fun test() {
-            TODO()
+        @Nested
+        inner class BrkNative {
+            @BeforeEach
+            fun initialize() {
+                mode = ProcessorMode.NATIVE
+                status.emulationMode = false
+            }
+
+            @Test
+            fun test() {
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF6, 0x44)
+                memory.returnFor(0x00, 0xFFF7, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+
+            @Test
+            fun ignoreIrqDisable() {
+                status.irqDisable = true
+
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF6, 0x44)
+                memory.returnFor(0x00, 0xFFF7, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+
+            @Test
+            fun resetDecimal() {
+                status.decimal = true
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF6, 0x44)
+                memory.returnFor(0x00, 0xFFF7, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+        }
+
+        @Nested
+        inner class BrkEmulation {
+            @BeforeEach
+            fun initialize() {
+                mode = ProcessorMode.EMULATION
+                status.emulationMode = true
+            }
+
+            @Test
+            fun test() {
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFFE, 0x44)
+                memory.returnFor(0x00, 0xFFFF, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+                status._break = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
+
+            @Test
+            fun ignoreIrqDisable() {
+                status.irqDisable = true
+
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFFE, 0x44)
+                memory.returnFor(0x00, 0xFFFF, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+                status._break = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
+
+            @Test
+            fun resetDecimal() {
+                status.decimal = true
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFFE, 0x44)
+                memory.returnFor(0x00, 0xFFFF, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+                status._break = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
         }
     }
 
@@ -24,9 +162,142 @@ class ProcessorOperationsTest {
         "COP",
         { cop }
     ) {
-        @Test
-        fun test() {
-            TODO()
+        @Nested
+        inner class CopNative {
+            @BeforeEach
+            fun initialize() {
+                mode = ProcessorMode.NATIVE
+                status.emulationMode = false
+            }
+
+            @Test
+            fun test() {
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+
+            @Test
+            fun ignoreIrqDisable() {
+                status.irqDisable = true
+
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+
+            @Test
+            fun resetDecimal() {
+                status.decimal = true
+                prepareProcessor(pbr = 0x11, pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x11)
+
+                memory.expectWrite(0x00, 0x01FE, 0x22)
+                memory.expectWrite(0x00, 0x01FD, 0x35)
+
+                memory.expectWrite(0x00, 0x01FC, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pbr = 0x00, pc = 0x5544, s = 0x01FB)
+            }
+        }
+
+        @Nested
+        inner class CopEmulation {
+            @BeforeEach
+            fun initialize() {
+                mode = ProcessorMode.EMULATION
+                status.emulationMode = true
+            }
+
+            @Test
+            fun test() {
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
+
+            @Test
+            fun ignoreIrqDisable() {
+                status.irqDisable = true
+
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
+
+            @Test
+            fun resetDecimal() {
+                status.decimal = true
+                prepareProcessor(pc = 0x2233, s = 0x01FF)
+
+                memory.expectWrite(0x00, 0x01FF, 0x22)
+                memory.expectWrite(0x00, 0x01FE, 0x35)
+
+                memory.expectWrite(0x00, 0x01FD, status.get())
+
+                memory.returnFor(0x00, 0xFFF4, 0x44)
+                memory.returnFor(0x00, 0xFFF5, 0x55)
+
+                status.decimal = false
+                status.irqDisable = true
+
+                testOperation(pc = 0x5544, s = 0x01FC)
+            }
         }
     }
 
@@ -206,8 +477,9 @@ class ProcessorOperationsTest {
         { stp }
     ) {
         @Test
+        @Disabled
         fun test() {
-            TODO()
+            TODO("test STP stop the clock")
         }
     }
 
@@ -218,7 +490,10 @@ class ProcessorOperationsTest {
     ) {
         @Test
         fun test() {
-            TODO()
+            prepareProcessor(pc = 0x1111)
+            testOperation(pc = 0x1111)
+
+            processor.executeNextInstruction() // should do nothing
         }
     }
 

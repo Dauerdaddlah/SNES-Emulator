@@ -188,7 +188,7 @@ class Processor(
             pushByte(rPBR.value)
         }
 
-        pushShort(rPC.value + 1)
+        pushShort(rPC.value + 2)
         pushByte(rP.get())
 
         rP.decimal = false
