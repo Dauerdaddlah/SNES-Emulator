@@ -1,7 +1,5 @@
 package de.dde.snes.memory
 
-import de.dde.snes.SNES
-
 interface MemoryMapping {
     fun readByte(bank: Bank, address: ShortAddress): Int
     fun writeByte(bank: Bank, address: ShortAddress, value: Int)
@@ -12,7 +10,7 @@ abstract class MemoryMappingArray(
 ) : MemoryMapping {
     override fun readByte(bank: Bank, address: ShortAddress): Int {
         val i = index(bank, address)
-        return array[i.rem(array.size)].toInt()
+        return array[i.rem(array.size)].toInt() and 0xFF
     }
 
     override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {

@@ -7,10 +7,6 @@ data class Instruction(
     val operation: Operation,
     val addressMode: AddressMode
 ) {
-    fun execute() {
-        operation.execute(addressMode)
-    }
-
     override fun toString(): String {
         return "$operation $addressMode"
     }

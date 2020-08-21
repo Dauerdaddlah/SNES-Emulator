@@ -41,6 +41,69 @@ class Processor(
     internal val operations = Operations()
     internal val addressModes = AddressModes()
     internal val instructions = Instructions()
+    private val instData = InstructionData()
+
+    private inner class InstructionData {
+        lateinit var inst: Instruction
+        var address: ShortAddress = -1
+        var bank: Int = -1
+        var result: AddressModeResult = AddressModeResult.NOTHING
+        var value: Int = -1
+
+        fun updateInst(inst: Instruction) {
+            this.inst = inst
+            result = inst.addressMode.result
+            when {
+                result.address -> {
+                    value = inst.addressMode.fetchValue()
+
+                    bank = when (result) {
+                        AddressModeResult.ADDRESS_0 -> 0
+                        AddressModeResult.FULLADDRESS -> value.bank
+                        AddressModeResult.SHORTADDRESS,
+                        AddressModeResult.ADDRESS_PBR -> rPBR.get()
+                        AddressModeResult.ADDRESS_DBR -> rDBR.get()
+                        else -> error("should never be possible to happen")
+                    }
+                    address = when (result) {
+                        AddressModeResult.ADDRESS_PBR,
+                        AddressModeResult.ADDRESS_0,
+                        AddressModeResult.ADDRESS_DBR,
+                        AddressModeResult.SHORTADDRESS -> value
+                        AddressModeResult.FULLADDRESS -> value.shortAddress
+                        else -> error("should never be possible to happen")
+                    }
+
+                    value = -1
+                }
+                result == AddressModeResult.IMMEDIATE ||
+                result.value -> {
+                    address = -1
+                    value = inst.addressMode.fetchValue()
+                }
+                else -> {
+                    address = -1
+                    value = -1
+                }
+            }
+        }
+
+        fun readValue(r: Register) {
+            if (address != -1) {
+                value = read(bank, address, r.size)
+            } else if (value != -1 && result == AddressModeResult.IMMEDIATE && r.size > 1) {
+                value = Short(value, inst.addressMode.fetchValue())
+            }
+        }
+
+        fun writeValue(res: Int, r: Register) {
+            if (address != -1) {
+                write(bank, address, res, r.size)
+            } else if (result == AddressModeResult.ACCUMULATOR) {
+                rA.set(res)
+            }
+        }
+    }
 
     var waitForInterrupt = false
         private set
@@ -82,19 +145,29 @@ class Processor(
         rS.size16Bit = mode == ProcessorMode.NATIVE
     }
 
+    val log = SnesLog("new.log")
+
     fun executeNextInstruction() {
         if (waitForInterrupt) {
             return
         }
 
+        log.prepare(rA.getFull(), rX.get(), rY.get(), rS.get(), rD.get(), rP.get(), rPC.get(), rDBR.get(), rPBR.get(), mode == ProcessorMode.EMULATION)
+
         val i = fetch()
         val inst = instructions[i]
 
-        println(inst)
-
         instructionCount++
 
-        inst.execute()
+        execute(inst)
+
+        log.log(instData.inst.operation.symbol, instData.address, instData.value)
+    }
+
+    fun execute(inst: Instruction) {
+        instData.updateInst(inst)
+
+        inst.operation.execute()
     }
 
     private fun fetch(): Int {
@@ -454,7 +527,7 @@ class Processor(
 
     fun compare(r: Register, value1: Int, value2: Int) {
         val result = value1 - value2
-        rP.carry = value1 < value2
+        rP.carry = value1 >= value2
         rP.zero = r.trimValue(result) == 0
         rP.negative = r.isNegative(result)
     }
@@ -677,29 +750,29 @@ class Processor(
     }
 
     internal inner class AddressModes {
-        /** a */       val absolute = addressModeSimpleShort("a", "Absolute", AddressModeResult.ADDRESS_DBR)
+        /** a */       val absolute = AddressModeSimple("a", "Absolute", AddressModeResult.ADDRESS_DBR) { fetchShort() }
         /** (a,x) */   val absoluteIndexedIndirect = addressModeIndirectShort("(a,x)", "Absolute Indexed Indirect", { it + rX.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.SHORTADDRESS)
-        /** a,x */     val absoluteIndexedWithX = addressModeSimpleShort("a,x", "Absolute Indexed With X", AddressModeResult.ADDRESS_DBR, rX)
-        /** a,y */     val absoluteIndexedWithY = addressModeSimpleShort("a,y", "Absolute Indexed With Y", AddressModeResult.ADDRESS_DBR, rY)
+        /** a,x */     val absoluteIndexedWithX = addressModeDbrShort("a,x", "Absolute Indexed With X", rX)
+        /** a,y */     val absoluteIndexedWithY = addressModeDbrShort("a,y", "Absolute Indexed With Y", rY)
         /** (a) */     val absoluteIndirect = addressModeIndirectShort("(a)", "Absolute Indirect", { it }, AddressModeResult.ADDRESS_0, AddressModeResult.SHORTADDRESS)
         /** (a) */     val absoluteIndirectLong = addressModeIndirectShort("(a)", "Absolute Indirect", {it }, AddressModeResult.ADDRESS_0, AddressModeResult.FULLADDRESS)
-        /** al,x */    val absoluteLongIndexedWithX = addressModeSimpleLong("al,x", "Absolute Long Indexed With X", AddressModeResult.FULLADDRESS, rX)
-        /** al */      val absoluteLong = addressModeSimpleLong("al", "Absolute Long", AddressModeResult.FULLADDRESS)
+        /** al,x */    val absoluteLongIndexedWithX = AddressModeSimple("al,x", "Absolute Long Indexed With X", AddressModeResult.FULLADDRESS) { fetchLong() + rX.get() }
+        /** al */      val absoluteLong = AddressModeSimple("al", "Absolute Long", AddressModeResult.FULLADDRESS) { fetchLong() }
         /** (d,x) */   val directIndexedIndirect = addressModeIndirect("(d,x)", "Direct Indexed Indirect", { it + rD.get() + rX.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR)
-        /** d,x */     val directIndexedWithX = addressModeSimple("d,x", "Direct Indexed With X", AddressModeResult.ADDRESS_0, rD, rX)
-        /** d,y */     val directIndexedWithY = addressModeSimple("d,y", "Direct Indexed With Y", AddressModeResult.ADDRESS_0, rD, rY)
+        /** d,x */     val directIndexedWithX = addressMode0("d,x", "Direct Indexed With X", rD, rX)
+        /** d,y */     val directIndexedWithY = addressMode0("d,y", "Direct Indexed With Y", rD, rY)
         /** (d),y */   val directIndirectIndexed = addressModeIndirect("(d),y", "Direct Indirect Indexed", { it + rD.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR, { it + rY.get() }, AddressModeResult.FULLADDRESS)
         /** \[d],y */  val directIndirectLongIndexed = addressModeIndirect("[d],y", "Direct Indirect Long Indexed", { it + rD.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.FULLADDRESS, { it + rY.get() }, AddressModeResult.FULLADDRESS)
         /** \[d] */    val directIndirectLong = addressModeIndirect("[d]", "Direct Indirect Long", { it + rD.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.FULLADDRESS)
         /** (d) */     val directIndirect = addressModeIndirect("(d)", "Direct Indirect", { it + rD.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR)
-        /** d */       val direct = addressModeSimple("d", "Direct", AddressModeResult.ADDRESS_0, rD)
-        /** # */       val immediate = addressModeSimple("#", "Immediate", AddressModeResult.IMMEDIATE)
+        /** d */       val direct = addressMode0("d", "Direct", rD)
+        /** # */       val immediate = AddressModeSimple("#", "Immediate", AddressModeResult.IMMEDIATE) { fetch() }
         /** rl */      val programCounterRelativeLong: AddressMode = AddressModeSimple("rl", "Program Counter Relative Long", AddressModeResult.SHORTADDRESS) { fetchShort().toShort().toInt() + rPC.get() }
         /** r */       val programCounterRelative: AddressMode = AddressModeSimple("r", "Program Counter Relative", AddressModeResult.SHORTADDRESS) { fetch().toByte().toInt() + rPC.get() }
-        /** d,s */     val stackRelative = addressModeSimple("d,s", "Stack Relative", AddressModeResult.ADDRESS_0, rS)
+        /** d,s */     val stackRelative = addressMode0("d,s", "Stack Relative", rS)
         /** (d,s),y */ val stackRelativeIndirectIndexed = addressModeIndirect("(d,s),y", "Stack Relative Indirect Indexed", { it + rS.get() }, AddressModeResult.ADDRESS_0, AddressModeResult.ADDRESS_DBR, { it + rY.get() }, AddressModeResult.FULLADDRESS)
-        /** A */       val accumulator = addressModeRegister("A", "Accumulator", AddressModeResult.ACCUMULATOR, rA)
-        /** xyc */     val blockMove = addressModeSimple("xyc", "Block Move", AddressModeResult.IMMEDIATE)
+        /** A */       val accumulator = AddressModeSimple("A", "Accumulator", AddressModeResult.ACCUMULATOR) { rA.get() }
+        /** xyc */     val blockMove = AddressModeSimple("xyc", "Block Move", AddressModeResult.IMMEDIATE) { fetch() }
         /** i */       val implied = noAddressMode("i", "Implied", "Implied does not provide any value")
         /** s */       val stack = noAddressMode("s", "Stack", "Stack does not fetch any value")
         /**  */        val addressNull = noAddressMode("", "", "no valid addressMode")
@@ -710,67 +783,36 @@ class Processor(
             errorMessage: String
         ): AddressMode = AddressModeNoValue(symbol, description, AddressModeResult.NOTHING, errorMessage)
 
-        private fun addressModeSimple(
+        private fun addressMode0(
             symbol: String,
             description: String,
-            result: AddressModeResult
-        ): AddressMode = AddressModeSimple(symbol, description, result) { fetch() }
-
-        private fun addressModeSimple(
-            symbol: String,
-            description: String,
-            result: AddressModeResult,
             r: Register
         ): AddressMode = AddressModeSimple(
             symbol,
             description,
-            result
+            AddressModeResult.ADDRESS_0
         ) { shortAddress(fetch() + r.get())}
 
-        private fun addressModeSimple(
+        private fun addressMode0(
             symbol: String,
             description: String,
-            result: AddressModeResult,
             r: Register,
             r2: Register
         ): AddressMode = AddressModeSimple(
             symbol,
             description,
-            result
+            AddressModeResult.ADDRESS_0
         ) { shortAddress(fetch() + r.get() + r2.get())}
 
-        private fun addressModeSimpleShort(
+        private fun addressModeDbrShort(
             symbol: String,
             description: String,
-            result: AddressModeResult
-        ): AddressMode = AddressModeSimple(symbol, description, result) { fetchShort() }
-
-        private fun addressModeSimpleShort(
-            symbol: String,
-            description: String,
-            result: AddressModeResult,
             r: Register
-        ): AddressMode = AddressModeSimple(symbol, description, result) { shortAddress(fetchShort() + r.get())}
-
-        private fun addressModeSimpleLong(
-            symbol: String,
-            description: String,
-            result: AddressModeResult
-        ): AddressMode = AddressModeSimple(symbol, description, result) { fetchLong() }
-
-        private fun addressModeSimpleLong(
-            symbol: String,
-            description: String,
-            result: AddressModeResult,
-            r: Register
-        ): AddressMode = AddressModeSimple(symbol, description, result) { fetchLong() + r.get() }
-
-        private fun addressModeRegister(
-            symbol: String,
-            description: String,
-            result: AddressModeResult,
-            r: Register
-        ): AddressMode = AddressModeSimple(symbol, description, result) { r.get() }
+        ): AddressMode = AddressModeSimple(
+            symbol,
+            description,
+            AddressModeResult.ADDRESS_DBR
+        ) { shortAddress(fetchShort() + r.get())}
 
         private fun addressModeIndirect(
             symbol: String,
@@ -892,51 +934,51 @@ class Processor(
     }
 
     inner class Operations {
-        val adc = OperationAddressImmediate("ADC", "add with carry", rA) { r, value -> r.set(addCarry(r, r.get(), value)) }
-        val and = OperationAddressImmediate("AND", "And with accumulator", rA) { r, value -> r.set(and(r, r.get(), value)) }
-        val asl = OperationSetAddress("ASL", "Shift left", rA) { r, _, value -> shiftLeft(r, value, false) }
-        val bcc = OperationSimpleAddress("BCC", "Branch if carry clear") { bank, address -> if (!rP.carry) branch(bank, address) }
-        val bcs = OperationSimpleAddress("BCS", "Branch if carry set") { bank, address -> if (rP.carry) branch(bank, address) }
-        val beq = OperationSimpleAddress("BEQ", "Branch if Equal/Zero set") { bank, address -> if (rP.zero) branch(bank, address) }
-        val bit = OperationBIT("BIT", "Bit test between A and the value")
-        val bmi = OperationSimpleAddress("BMI", "Branch if Minus/Negative set") { bank, address -> if (rP.negative) branch(bank, address) }
-        val bne = OperationSimpleAddress("BNE", "Branch if Not equal/zero clear") { bank, address -> if (!rP.zero) branch(bank, address) }
-        val bpl = OperationSimpleAddress("BPL", "Branch if Plus/negative clear") { bank, address -> if (!rP.negative) branch(bank, address)}
-        val bra = OperationSimpleAddress("BRA", "Branch Always") { bank, address -> branch(bank, address) }
+        val adc = OperationRead("ADC", "add with carry", rA) { value -> rA.set(addCarry(rA, rA.get(), value)) }
+        val and = OperationRead("AND", "And with accumulator", rA) { value -> rA.set(and(rA, rA.get(), value)) }
+        val asl = OperationSet("ASL", "Shift left", rA) { value -> shiftLeft(rA, value, false) }
+        val bcc = OperationAddress("BCC", "Branch if carry clear") { bank, address -> if (!rP.carry) branch(bank, address) }
+        val bcs = OperationAddress("BCS", "Branch if carry set") { bank, address -> if (rP.carry) branch(bank, address) }
+        val beq = OperationAddress("BEQ", "Branch if Equal/Zero set") { bank, address -> if (rP.zero) branch(bank, address) }
+        val bit = OperationRead("BIT", "Bit test between A and the value", rA) { v -> bitTest(rA, rA.get(), v, instData.result == AddressModeResult.IMMEDIATE) }
+        val bmi = OperationAddress("BMI", "Branch if Minus/Negative set") { bank, address -> if (rP.negative) branch(bank, address) }
+        val bne = OperationAddress("BNE", "Branch if Not equal/zero clear") { bank, address -> if (!rP.zero) branch(bank, address) }
+        val bpl = OperationAddress("BPL", "Branch if Plus/negative clear") { bank, address -> if (!rP.negative) branch(bank, address)}
+        val bra = OperationAddress("BRA", "Branch Always") { bank, address -> branch(bank, address) }
         val brk = OperationSimple0("BRK", "Force Break") { interrupt(EMULATION_BRK_VECTOR_ADDRESS, NATIVE_BRK_VECTOR_ADDRESS) }
-        val brl = OperationSimpleAddress("BRL", "Branch Always Long") { bank, address -> branch(bank, address, true) }
-        val bvc = OperationSimpleAddress("BVC", "Branch if Overflow clear") { bank, address -> if (!rP.overflow) branch(bank, address) }
-        val bvs = OperationSimpleAddress("BVS", "Branch If Overflow set") { bank, address -> if (rP.overflow) branch(bank, address) }
+        val brl = OperationAddress("BRL", "Branch Always Long") { bank, address -> branch(bank, address, true) }
+        val bvc = OperationAddress("BVC", "Branch if Overflow clear") { bank, address -> if (!rP.overflow) branch(bank, address) }
+        val bvs = OperationAddress("BVS", "Branch If Overflow set") { bank, address -> if (rP.overflow) branch(bank, address) }
         val clc = OperationSimple0("CLC", "Clear carry flag") { setPBits(StatusRegister.BIT_CARRY, false) }
         val cld = OperationSimple0("CLD", "Clear decimal flag") { setPBits(StatusRegister.BIT_DECIMAL, false) }
         val cli = OperationSimple0("CLI", "Clear irq/interrupt flag") { setPBits(StatusRegister.BIT_IRQ_DISABLE, false) }
         val clv = OperationSimple0("CLV", "Clear Overflow flag") { setPBits(StatusRegister.BIT_OVERFLOW, false) }
-        val cmp = OperationAddressImmediate("CMP", "Compare value with A", rA) { r, value -> compare(r, r.get(), value) }
+        val cmp = OperationRead("CMP", "Compare value with A", rA) { value -> compare(rA, rA.get(), value) }
         val cop = OperationSimple0("COP", "Coprocessor interrupt") { interrupt(COP_VECTOR_ADDRESS, COP_VECTOR_ADDRESS) }
-        val cpx = OperationAddressImmediate("CPX", "Compare value with X", rX) { r, value -> compare(r, r.get(), value) }
-        val cpy = OperationAddressImmediate("CPY", "Compare value with Y", rY) { r, value -> compare(r, r.get(), value) }
-        val dec = OperationSetAddress("DEC", "Decrement Accumulator or Address", rA) { r, _, value -> add(r, value, -1) }
+        val cpx = OperationRead("CPX", "Compare value with X", rX) { value -> compare(rX, rX.get(), value) }
+        val cpy = OperationRead("CPY", "Compare value with Y", rY) { value -> compare(rY, rY.get(), value) }
+        val dec = OperationSet("DEC", "Decrement Accumulator or Address", rA) { value -> add(rA, value, -1) }
         val dex = OperationSimple0("DEX", "Decrement X") { rX.set(add(rX, rX.get(), -1)) }
         val dey = OperationSimple0("DEY", "Decrement Y") { rY.set(add(rY, rY.get(), -1)) }
-        val eor = OperationAddressImmediate("EOR", "Exclusive or with accumulator", rA) { r, value -> r.set(eor(r, r.get(), value)) }
-        val inc = OperationSetAddress("INC", "Increment Accumulator or Address", rA) { r, _, value -> add(r, value, 1) }
+        val eor = OperationRead("EOR", "Exclusive or with accumulator", rA) { value -> rA.set(eor(rA, rA.get(), value)) }
+        val inc = OperationSet("INC", "Increment Accumulator or Address", rA) { value -> add(rA, value, 1) }
         val inx = OperationSimple0("INX", "Increment X") { rX.set(add(rX, rX.get(), 1)) }
         val iny = OperationSimple0("INY", "Increment Y") { rY.set(add(rY, rY.get(), 1)) }
-        val jml = OperationSimpleAddress("JML", "Jump to address long") { bank, address -> branch(bank, address, true) }
-        val jmp = OperationSimpleAddress("JMP", "Jump to address") { bank, address -> branch(bank, address, false) }
-        val jsl = OperationSimpleAddress("JSL", "Jump to subroutine long") { bank, address -> jump(bank, address, true) }
-        val jsr = OperationSimpleAddress("JSR", "Jump to subroutine") { bank, address -> jump(bank, address) }
-        val lda = OperationAddressImmediate("LDA", "Load A", rA) { r, value -> load(r, value) }
-        val ldx = OperationAddressImmediate("LDX", "Load X", rX) { r, value -> load(r, value) }
-        val ldy = OperationAddressImmediate("LDY", "Load Y", rY) { r, value -> load(r, value) }
-        val lsr = OperationSetAddress("LSR", "Shift right", rA) { r, _, value -> shiftRight(r, value, false) }
-        val mvn = OperationSimple("MVN", "Block move negative") { blockMove(it.fetchValue(), it.fetchValue(), -1) }
-        val mvp = OperationSimple("MVP", "Block move positive") { blockMove(it.fetchValue(), it.fetchValue(), 1) }
+        val jml = OperationAddress("JML", "Jump to address long") { bank, address -> branch(bank, address, true) }
+        val jmp = OperationAddress("JMP", "Jump to address") { bank, address -> branch(bank, address, false) }
+        val jsl = OperationAddress("JSL", "Jump to subroutine long") { bank, address -> jump(bank, address, true) }
+        val jsr = OperationAddress("JSR", "Jump to subroutine") { bank, address -> jump(bank, address) }
+        val lda = OperationRead("LDA", "Load A", rA) { value -> load(rA, value) }
+        val ldx = OperationRead("LDX", "Load X", rX) { value -> load(rX, value) }
+        val ldy = OperationRead("LDY", "Load Y", rY) { value -> load(rY, value) }
+        val lsr = OperationSet("LSR", "Shift right", rA) { value -> shiftRight(rA, value, false) }
+        val mvn = OperationSimple0("MVN", "Block move negative") { with(instData.inst.addressMode) { blockMove(fetchValue(), fetchValue(), -1) } }
+        val mvp = OperationSimple0("MVP", "Block move positive") { with(instData.inst.addressMode) { blockMove(fetchValue(), fetchValue(), 1) } }
         val nop = OperationSimple0("NOP", "No operation") { }
-        val ora = OperationAddressImmediate("ORA", "Or with accumulator", rA) { r, value -> r.set(or(r, r.get(), value)) }
-        val pea = OperationSimpleAddress("PEA", "Push effective address") { _, address -> pushStack(address, 2)}
-        val pei = OperationSimpleAddress("PEI", "Push effective indirect address") { _, address -> pushStack(address, 2)}
-        val per = OperationSimpleAddress("PER", "Push relative address") { _, address -> pushStack(address, 2)}
+        val ora = OperationRead("ORA", "Or with accumulator", rA) { value -> rA.set(or(rA, rA.get(), value)) }
+        val pea = OperationAddress("PEA", "Push effective address") { _, address -> pushStack(address, 2)}
+        val pei = OperationAddress("PEI", "Push effective indirect address") { _, address -> pushStack(address, 2)}
+        val per = OperationAddress("PER", "Push relative address") { _, address -> pushStack(address, 2)}
         val pha = OperationSimple0("PHA", "Push A") { pushStack(rA) }
         val phb = OperationSimple0("PHB", "Push DBR") { pushStack(rDBR) }
         val phd = OperationSimple0("PHD", "Push D") { pushStack(rD) }
@@ -950,29 +992,29 @@ class Processor(
         val plp = OperationSimple0("PLP", "Pull P") { pullStack(rP) }
         val plx = OperationSimple0("PLX", "Pull X") { pullStack(rX) }
         val ply = OperationSimple0("PLY", "Pull Y") { pullStack(rY) }
-        val rep = OperationSimple1("REP", "Reset Bit in P") { setPBits(it, false) }
-        val rol = OperationSetAddress("ROL", "Shift left with carry", rA) { r, _, value -> shiftLeft(r, value, true) }
-        val ror = OperationSetAddress("ROR", "Shift right with carry", rA) { r, _, value -> shiftRight(r, value, true) }
+        val rep = OperationRead("REP", "Reset Bit in P", rP) { setPBits(it, false) }
+        val rol = OperationSet("ROL", "Shift left with carry", rA) { value -> shiftLeft(rA, value, true) }
+        val ror = OperationSet("ROR", "Shift right with carry", rA) { value -> shiftRight(rA, value, true) }
         val rti = OperationSimple0("RTI", "Return from Interrupt") { returnFromInterrupt() }
         val rtl = OperationSimple0("RTL", "Return from Subroutine long") { returnFromSubroutine(true) }
         val rts = OperationSimple0("RTS", "Return from Subroutine") { returnFromSubroutine(false) }
-        val sbc = OperationAddressImmediate("SBC", "subtract with carry", rA) { r, value -> r.set(subtractCarry(r, r.get(), value)) }
-        val sep = OperationSimple1("SEP", "Set Bit in P") { setPBits(it, true) }
+        val sbc = OperationRead("SBC", "subtract with carry", rA) { value -> rA.set(subtractCarry(rA, rA.get(), value)) }
+        val sep = OperationRead("SEP", "Set Bit in P", rP) { setPBits(it, true) }
         val sec = OperationSimple0("SEC", "Set carry flag") { setPBits(StatusRegister.BIT_CARRY, true) }
         val sed = OperationSimple0("SED", "Set decimal flag") { setPBits(StatusRegister.BIT_DECIMAL, true) }
         val sei = OperationSimple0("SEI", "Set irq/interrupt flag") { setPBits(StatusRegister.BIT_IRQ_DISABLE, true) }
-        val sta = OperationSimpleAddress("STA", "Store A") { bank, address -> write(bank, address, rA) }
+        val sta = OperationAddress("STA", "Store A") { bank, address -> write(bank, address, rA) }
         val stp = OperationSimple0("STP", "Stop the clock") { TODO() }
-        val stx = OperationSimpleAddress("STX", "Store X") { bank, address -> write(bank, address, rX) }
-        val sty = OperationSimpleAddress("STY", "Store Y") { bank, address -> write(bank, address, rY) }
-        val stz = OperationSimpleAddress("STZ", "Store Zero") { bank, address -> write(bank, address, 0, rA.size) }
+        val stx = OperationAddress("STX", "Store X") { bank, address -> write(bank, address, rX) }
+        val sty = OperationAddress("STY", "Store Y") { bank, address -> write(bank, address, rY) }
+        val stz = OperationAddress("STZ", "Store Zero") { bank, address -> write(bank, address, 0, rA.size) }
         val tax = OperationSimple0("TAX", "Transfer A to X") { transfer(rA, rX) }
         val tay = OperationSimple0("TAY", "Transfer A to Y") { transfer(rA, rY) }
         val tcd = OperationSimple0("TCD", "Transfer A to D") { transfer(rA, rD, true) }
         val tcs = OperationSimple0("TCS", "Transfer A to S") { transfer(rA, rS, true) }
         val tdc = OperationSimple0("TDC", "Transfer D to A") { transfer(rD, rA, true) }
-        val trb = OperationSetAddress("TRB", "Test and Reset Bits", rA) { r, _, value -> testAndSetBits(r, value, false) }
-        val tsb = OperationSetAddress("TSB", "Test and Set Bits", rA) { r, _, value -> testAndSetBits(r, value, true) }
+        val trb = OperationSet("TRB", "Test and Reset Bits", rA) { value -> testAndSetBits(rA, value, false) }
+        val tsb = OperationSet("TSB", "Test and Set Bits", rA) { value -> testAndSetBits(rA, value, true) }
         val tsc = OperationSimple0("TSC", "Transfer S to A") { transfer(rS, rA, true) }
         val tsx = OperationSimple0("TSX", "Transfer S to X") { transfer(rS, rX) }
         val txa = OperationSimple0("TXA", "Transfer X to A") { transfer(rX, rA) }
@@ -986,116 +1028,62 @@ class Processor(
         val xce = OperationSimple0("XCE", "Exchange Carry and Emulation flag") { xce() }
 
         /**
-         * An Operation, which executes on a memory-address
+         * An Operation the reads input from accumulator or memory and executes with that
          */
-        open inner class OperationSimpleAddress(
+        open inner class OperationRead(
+            symbol: String,
+            description: String,
+            val r: Register = rA,
+            val action: (Int) -> Any?
+        ) : OperationBase(
+            symbol, description
+        ) {
+            override fun execute() {
+                with(instData) {
+                    readValue(r)
+
+                    action(value)
+                }
+            }
+        }
+
+        /**
+         * An Operation that reads an input from accumulator or memory and rewrites the corresponding value with the result
+         */
+        inner class OperationSet(
+            symbol: String,
+            description: String,
+            val r: Register = rA,
+            val action: (Int) -> Int
+        ) : OperationBase(
+            symbol,
+            description
+        ) {
+            override fun execute() {
+                with(instData) {
+                    readValue(r)
+
+                    val res = action(value)
+
+                    writeValue(res, r)
+                }
+            }
+        }
+
+        /**
+         * An Operation that operates on a given bank-address
+         */
+        inner class OperationAddress(
             symbol: String,
             description: String,
             val action: (Bank, ShortAddress) -> Any?
-        ) : OperationBase(symbol, description) {
-            override fun execute(addressMode: AddressMode) {
-                val v = addressMode.fetchValue()
-
-                val bank = when (addressMode.result) {
-                    AddressModeResult.ADDRESS_0 -> 0
-                    AddressModeResult.FULLADDRESS -> v.bank
-                    AddressModeResult.SHORTADDRESS,
-                    AddressModeResult.ADDRESS_PBR -> rPBR.get()
-                    AddressModeResult.ADDRESS_DBR -> rDBR.get()
-                    else -> error("Invalid addressmode<$addressMode> given for operand<$symbol> ($description)")
-                }
-                val address = when (addressMode.result) {
-                    AddressModeResult.ADDRESS_PBR,
-                    AddressModeResult.ADDRESS_0,
-                    AddressModeResult.ADDRESS_DBR,
-                    AddressModeResult.SHORTADDRESS -> v
-                    AddressModeResult.FULLADDRESS -> v.shortAddress
-                    else -> error("invalid addressmode<$addressMode> given for operation<$symbol> ($description)")
-                }
-
-                action(bank, address)
-            }
-        }
-
-        /**
-         * Operation which executes with one given parameter.
-         * The parameter is fetched from a memory-address or in case from immediate from that
-         */
-        inner class OperationAddressImmediate(
-            symbol: String,
-            description: String,
-            val r: Register,
-            val action2: (Register, Int) -> Any?
-        ) : OperationSimpleAddress(
+        ) : OperationBase(
             symbol,
-            description,
-            { bank, address -> action2(r, read(bank, address, r.size)) }
+            description
         ) {
-            override fun execute(addressMode: AddressMode) {
-                when (addressMode.result) {
-                    AddressModeResult.IMMEDIATE -> {
-                        if (r.size == 1) {
-                            action2(r, addressMode.fetchValue())
-                        } else {
-                            action2(r, Short(addressMode.fetchValue(), addressMode.fetchValue()))
-                        }
-                    }
-                    else -> super.execute(addressMode)
-                }
-            }
-        }
-
-        /**
-         * special BIT-Operation which acts differently depending on whether the AddressMode gave an Address or an Immediate
-         */
-        inner class OperationBIT(
-            symbol: String,
-            description: String,
-            val r: Register = rA
-        ) : OperationSimpleAddress(
-            symbol,
-            description,
-            { bank, address -> bitTest(r, r.get(), read(bank, address, r.size)) }
-        ) {
-            override fun execute(addressMode: AddressMode) {
-                when (addressMode.result) {
-                    AddressModeResult.IMMEDIATE -> {
-                        val v = if (r.size == 1) {
-                            addressMode.fetchValue()
-                        } else {
-                            Short(addressMode.fetchValue(), addressMode.fetchValue())
-                        }
-
-                        bitTest(r, r.get(), v, true)
-                    }
-                    else -> super.execute(addressMode)
-                }
-            }
-        }
-
-        /**
-         * An Operation, which operates using one parameter and saves the result either in the memory or in the register
-         */
-        inner class OperationSetAddress(
-            symbol: String,
-            description: String,
-            val r: Register,
-            val action2: (Register, Int, Int) -> Int
-        ) : OperationSimpleAddress(
-            symbol,
-            description,
-            { bank, address ->
-                val param = read(bank, address, r.size)
-                val result = action2(r, r.get(), param)
-                write(bank, address, result, r.size)
-            }
-        ) {
-            override fun execute(addressMode: AddressMode) {
-                when(addressMode.result) {
-                    AddressModeResult.ACCUMULATOR -> {
-                        r.set(action2(r, r.get(), addressMode.fetchValue()))
-                    }
-                    else -> super.execute(addressMode)
+            override fun execute() {
+                with(instData) {
+                    action(bank, address)
                 }
             }
         }

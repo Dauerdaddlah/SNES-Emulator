@@ -5,6 +5,7 @@ import de.dde.snes.processor.Operation
 import de.dde.snes.processor.Processor
 import de.dde.snes.processor.ProcessorMode
 import de.dde.snes.processor.addressmode.TestAddressMode
+import de.dde.snes.processor.instruction.Instruction
 import de.dde.snes.processor.register.StatusRegister
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.assertAll
@@ -80,7 +81,7 @@ abstract class OperationTest(
 
         assertEquals(symbol, operation.symbol, "$prefix wrong symbol")
 
-        operation.execute(addressMode)
+        processor.execute(Instruction(operation, addressMode))
 
         assertAll(
             { assertEquals(pc, processor.rPC.get(), "$prefix wrong PC") },

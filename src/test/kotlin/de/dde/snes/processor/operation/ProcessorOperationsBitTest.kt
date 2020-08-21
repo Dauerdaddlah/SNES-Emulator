@@ -278,6 +278,8 @@ class ProcessorOperationsBitTest {
                 addressMode.result = AddressModeResult.IMMEDIATE
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(a = 0x70)
             }
 
@@ -290,6 +292,8 @@ class ProcessorOperationsBitTest {
 
                 memory.returnFor(0x01, 0x2332, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, a = 0x0F)
             }
 
@@ -300,16 +304,18 @@ class ProcessorOperationsBitTest {
                 addressMode.result = AddressModeResult.IMMEDIATE
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(a = 0xF070)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, false, true, false",
-                "0xFF, 0xFF, false, true, false",
-                "0x80, 0x00, true, false, false",
-                "0x01, 0xFF, false, false, true", // 74 35
-                "0x00, 0x01, true, false, true"
+                "0, 0, false, true, true",
+                "0xFF, 0xFF, false, true, true",
+                "0x80, 0x00, true, false, true",
+                "0x01, 0xFF, false, false, false", // 74 35
+                "0x00, 0x01, true, false, false"
             )
             fun status(a: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(a = a)
@@ -335,6 +341,8 @@ class ProcessorOperationsBitTest {
                 addressMode.fetchNext(0x3C)
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(a = 0x7070)
             }
 
@@ -348,16 +356,18 @@ class ProcessorOperationsBitTest {
                 memory.returnFor(0x01, 0x2332, 0x06)
                 memory.returnFor(0x01, 0x2333, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, a = 0x0F0F)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, 0, false, true, false",
-                "0xFFFF, 0xFF, 0xFF, false, true, false",
-                "0x8000, 0x00, 0x00, true, false, false",
-                "0x0001, 0xFF, 0xFF, false, false, true",
-                "0x0000, 0x01, 0x00, true, false, true"
+                "0, 0, 0, false, true, true",
+                "0xFFFF, 0xFF, 0xFF, false, true, true",
+                "0x8000, 0x00, 0x00, true, false, true",
+                "0x0001, 0xFF, 0xFF, false, false, false",
+                "0x0000, 0x01, 0x00, true, false, false"
             )
             fun status(a: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(a = a)
@@ -389,6 +399,8 @@ class ProcessorOperationsBitTest {
                 addressMode.result = AddressModeResult.IMMEDIATE
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(x = 0x70)
             }
 
@@ -401,16 +413,18 @@ class ProcessorOperationsBitTest {
 
                 memory.returnFor(0x01, 0x2332, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, x = 0x0F)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, false, true, false",
-                "0xFF, 0xFF, false, true, false",
-                "0x80, 0x00, true, false, false",
-                "0x01, 0xFF, false, false, true",
-                "0x00, 0x01, true, false, true"
+                "0, 0, false, true, true",
+                "0xFF, 0xFF, false, true, true",
+                "0x80, 0x00, true, false, true",
+                "0x01, 0xFF, false, false, false",
+                "0x00, 0x01, true, false, false"
             )
             fun status(x: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(x = x)
@@ -436,6 +450,8 @@ class ProcessorOperationsBitTest {
                 addressMode.fetchNext(0x3C)
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(x = 0x7070)
             }
 
@@ -449,16 +465,18 @@ class ProcessorOperationsBitTest {
                 memory.returnFor(0x01, 0x2332, 0x06)
                 memory.returnFor(0x01, 0x2333, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, x = 0x0F0F)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, 0, false, true, false",
-                "0xFFFF, 0xFF, 0xFF, false, true, false",
-                "0x8000, 0x00, 0x00, true, false, false",
-                "0x0001, 0xFF, 0xFF, false, false, true",
-                "0x0000, 0x01, 0x00, true, false, true"
+                "0, 0, 0, false, true, true",
+                "0xFFFF, 0xFF, 0xFF, false, true, true",
+                "0x8000, 0x00, 0x00, true, false, true",
+                "0x0001, 0xFF, 0xFF, false, false, false",
+                "0x0000, 0x01, 0x00, true, false, false"
             )
             fun status(x: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(x = x)
@@ -490,6 +508,8 @@ class ProcessorOperationsBitTest {
                 addressMode.result = AddressModeResult.IMMEDIATE
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(y = 0x70)
             }
 
@@ -502,16 +522,18 @@ class ProcessorOperationsBitTest {
 
                 memory.returnFor(0x01, 0x2332, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, y = 0x0F)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, false, true, false",
-                "0xFF, 0xFF, false, true, false",
-                "0x80, 0x00, true, false, false",
-                "0x01, 0xFF, false, false, true",
-                "0x00, 0x01, true, false, true"
+                "0, 0, false, true, true",
+                "0xFF, 0xFF, false, true, true",
+                "0x80, 0x00, true, false, true",
+                "0x01, 0xFF, false, false, false",
+                "0x00, 0x01, true, false, false"
             )
             fun status(y: Int, fetch: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(y = y)
@@ -537,6 +559,8 @@ class ProcessorOperationsBitTest {
                 addressMode.fetchNext(0x3C)
                 addressMode.fetchNext(0x3C)
 
+                status.carry = true
+
                 testOperation(y = 0x7070)
             }
 
@@ -550,16 +574,18 @@ class ProcessorOperationsBitTest {
                 memory.returnFor(0x01, 0x2332, 0x06)
                 memory.returnFor(0x01, 0x2333, 0x06)
 
+                status.carry = true
+
                 testOperation(dbr = 0x01, y = 0x0F0F)
             }
 
             @ParameterizedTest
             @CsvSource(
-                "0, 0, 0, false, true, false",
-                "0xFFFF, 0xFF, 0xFF, false, true, false",
-                "0x8000, 0x00, 0x00, true, false, false",
-                "0x0001, 0xFF, 0xFF, false, false, true",
-                "0x0000, 0x01, 0x00, true, false, true"
+                "0, 0, 0, false, true, true",
+                "0xFFFF, 0xFF, 0xFF, false, true, true",
+                "0x8000, 0x00, 0x00, true, false, true",
+                "0x0001, 0xFF, 0xFF, false, false, false",
+                "0x0000, 0x01, 0x00, true, false, false"
             )
             fun status(y: Int, fetch1: Int, fetch2: Int, negative: Boolean, zero: Boolean, carry: Boolean) {
                 prepareProcessor(y = y)
