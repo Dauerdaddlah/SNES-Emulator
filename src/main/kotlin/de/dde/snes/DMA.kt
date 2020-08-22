@@ -5,7 +5,7 @@ import de.dde.snes.memory.*
 class DMA(
     val snes: SNES,
     val channel: Int
-) : MemoryMapping {
+) {
     /** if true data will be transferred from ppu to cpu */
     var transferDirection = true
     /** if true the hdma-table contains pointer, otherwise it contains the raw data */
@@ -95,102 +95,6 @@ class DMA(
 
         // TODO HDMA-logic
         error("not implemented yet")
-    }
-
-    override fun readByte(bank: Bank, address: ShortAddress): Int {
-        return when (address and 0xF) {
-            0x0 -> {
-                var r = 0
-
-                if (transferDirection) r = r or 0x80
-                if (addressModePointer) r = r or 0x40
-                if (addressDecrement) r = r or 0x10
-                if (fixAddress) r = r or 0x08
-                r = r or transferMode.code
-
-                return r
-            }
-            0x1 -> {
-                destination
-            }
-            0x2 -> {
-                sourceAddress.lowByte()
-            }
-            0x3 -> {
-                sourceAddress.highByte()
-            }
-            0x4 -> {
-                sourceAddress.longByte()
-            }
-            0x5 -> {
-                indirectAddress.lowByte()
-            }
-            0x6 -> {
-                indirectAddress.highByte()
-            }
-            0x7 -> {
-                indirectAddress.longByte()
-            }
-            0x8 -> {
-                tableAddress.lowByte()
-            }
-            0x9 -> {
-                tableAddress.highByte()
-            }
-            0xA -> {
-                lineCount or (if (repeat) 0x80 else 0x0)
-            }
-            in 0xB..0xF -> {
-                0xFF
-            }
-            else -> error("invalid dma read for address ${address.toString(16)} on channel $channel")
-        }
-    }
-
-    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
-        when (address and 0xF) {
-            0x0 -> {
-                transferDirection = value.isBitSet(0x80)
-                addressModePointer = value.isBitSet(0x40)
-                addressDecrement = value.isBitSet(0x10)
-                fixAddress = value.isBitSet(0x08)
-                transferMode = TransferMode.byCode(value and 0x7)
-            }
-            0x1 -> {
-                destination = value.asByte()
-            }
-            0x2 -> {
-                sourceAddress = sourceAddress.withLow(value.asByte())
-            }
-            0x3 -> {
-                sourceAddress = sourceAddress.withHigh(value.asByte())
-            }
-            0x4 -> {
-                sourceAddress = sourceAddress.withLongByte(value.asByte())
-            }
-            0x5 -> {
-                indirectAddress = indirectAddress.withLow(value.asByte())
-            }
-            0x6 -> {
-                indirectAddress = indirectAddress.withHigh(value.asByte())
-            }
-            0x7 -> {
-                indirectAddress = indirectAddress.withLongByte(value.asByte())
-            }
-            0x8 -> {
-                tableAddress = tableAddress.withLow(value.asByte())
-            }
-            0x9 -> {
-                tableAddress = tableAddress.withHigh(value.asByte())
-            }
-            0xA -> {
-                repeat = value.isBitSet(0x80)
-                lineCount = value and 0x7F
-            }
-            in 0xB..0xF -> {
-
-            }
-        }
     }
 
     enum class TransferMode {

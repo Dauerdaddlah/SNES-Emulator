@@ -8,7 +8,9 @@ import de.dde.snes.processor.register.*
 
 class Processor(
     val memory: Memory
-) : MemoryMapping {
+) {
+    val chipVersion: Int = 2
+
     var fastRom = false
 
     var irqFlag = false
@@ -1354,31 +1356,6 @@ class Processor(
 
     fun getInstruction(opCode: Int)
         = instructions[opCode]
-
-    override fun readByte(bank: Bank, address: ShortAddress): Int {
-        return when (address) {
-            0x4210 -> {
-                val chipVersion = 2
-                val r = chipVersion or (if (nmiFlag) 0x80 else 0)
-                nmiFlag = false
-                r
-            }
-            0x4211 -> {
-                val r = if (irqFlag) 0x80 else 0
-                irqFlag = false
-                r
-            }
-            else -> { println("READ PROCESSOR ${address.toString(16)}"); error("not implemented yet") }
-        }
-    }
-
-    override fun writeByte(bank: Bank, address: ShortAddress, value: Int) {
-        when (address) {
-            0x4210, 0x4211 -> {
-            }
-            else -> { println("WRITE ${value.toString(16)} to PROCESSOR ${address.toString(16)}"); error("not implemented yet")}
-        }
-    }
 
     companion object {
         const val COP_VECTOR_ADDRESS: ShortAddress = 0xFFF4
