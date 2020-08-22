@@ -1,19 +1,27 @@
 package de.dde.snes
 
 import java.io.BufferedWriter
+import java.io.StringWriter
+import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.*
 
 class SnesLog(
-    fileName: String
+    fileName: String,
+    val stopCount: Int = 20000,
+    val enabled: Boolean = true
 ) {
-    val writer: BufferedWriter
+    val writer: Writer
 
     init {
         val p = Paths.get(fileName)
-        writer = Files.newBufferedWriter(p, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+        writer = if (enabled) {
+            Files.newBufferedWriter(p, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+        } else {
+            StringWriter()
+        }
     }
 
     var a: Int = 0
@@ -43,7 +51,10 @@ class SnesLog(
     var counter = 0
 
     fun log(instName: String, address: Int, value: Int) {
-        val sj = StringJoiner("\t")
+        if (!enabled) {
+            return
+        }
+        val sj = StringJoiner("\t", "", System.lineSeparator())
 
         sj.add("${pbr.toHexString(2)}:${pc.toHexString(4)}")
         sj.add(instName)
@@ -59,11 +70,10 @@ class SnesLog(
         sj.add(dbr.toHexString(4))
 
         writer.write(sj.toString())
-        writer.newLine()
 
         counter++
 
-        if (counter == 20000) {
+        if (counter == stopCount) {
             writer.flush()
 
             error("fail")

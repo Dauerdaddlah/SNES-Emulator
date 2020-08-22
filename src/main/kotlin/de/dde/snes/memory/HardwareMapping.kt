@@ -87,7 +87,7 @@ class HardwareMapping(
                     var r = 0
 
                     if (transferDirection) r = r or 0x80
-                    if (addressModePointer) r = r or 0x40
+                    if (addressModeIndirect) r = r or 0x40
                     if (addressDecrement) r = r or 0x10
                     if (fixAddress) r = r or 0x08
                     r = r or transferMode.code
@@ -113,7 +113,7 @@ class HardwareMapping(
                     indirectAddress.highByte()
                 }
                 0x7 -> {
-                    indirectAddress.longByte()
+                    indirectBank
                 }
                 0x8 -> {
                     tableAddress.lowByte()
@@ -139,7 +139,7 @@ class HardwareMapping(
             when (address and 0xF) {
                 0x0 -> {
                     transferDirection = value.isBitSet(0x80)
-                    addressModePointer = value.isBitSet(0x40)
+                    addressModeIndirect = value.isBitSet(0x40)
                     addressDecrement = value.isBitSet(0x10)
                     fixAddress = value.isBitSet(0x08)
                     transferMode = DMA.TransferMode.byCode(value and 0x7)
@@ -163,7 +163,7 @@ class HardwareMapping(
                     indirectAddress = indirectAddress.withHigh(value.asByte())
                 }
                 0x7 -> {
-                    indirectAddress = indirectAddress.withLongByte(value.asByte())
+                    indirectBank = value.asByte()
                 }
                 0x8 -> {
                     tableAddress = tableAddress.withLow(value.asByte())

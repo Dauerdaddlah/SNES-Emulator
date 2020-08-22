@@ -85,7 +85,7 @@ class Processor(
         rS.size16Bit = mode == ProcessorMode.NATIVE
     }
 
-    val log = SnesLog("new.log")
+    val log = SnesLog("new.log", 1000000, true)
 
     fun executeNextInstruction() {
         if (waitForInterrupt) {
