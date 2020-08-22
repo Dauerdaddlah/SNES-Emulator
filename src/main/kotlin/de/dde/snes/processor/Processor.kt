@@ -43,68 +43,6 @@ class Processor(
     internal val instructions = Instructions()
     private val instData = InstructionData()
 
-    private inner class InstructionData {
-        lateinit var inst: Instruction
-        var address: ShortAddress = -1
-        var bank: Int = -1
-        var result: AddressModeResult = AddressModeResult.NOTHING
-        var value: Int = -1
-
-        fun updateInst(inst: Instruction) {
-            this.inst = inst
-            result = inst.addressMode.result
-            when {
-                result.address -> {
-                    value = inst.addressMode.fetchValue()
-
-                    bank = when (result) {
-                        AddressModeResult.ADDRESS_0 -> 0
-                        AddressModeResult.FULLADDRESS -> value.bank
-                        AddressModeResult.SHORTADDRESS,
-                        AddressModeResult.ADDRESS_PBR -> rPBR.get()
-                        AddressModeResult.ADDRESS_DBR -> rDBR.get()
-                        else -> error("should never be possible to happen")
-                    }
-                    address = when (result) {
-                        AddressModeResult.ADDRESS_PBR,
-                        AddressModeResult.ADDRESS_0,
-                        AddressModeResult.ADDRESS_DBR,
-                        AddressModeResult.SHORTADDRESS -> value
-                        AddressModeResult.FULLADDRESS -> value.shortAddress
-                        else -> error("should never be possible to happen")
-                    }
-
-                    value = -1
-                }
-                result == AddressModeResult.IMMEDIATE ||
-                result.value -> {
-                    address = -1
-                    value = inst.addressMode.fetchValue()
-                }
-                else -> {
-                    address = -1
-                    value = -1
-                }
-            }
-        }
-
-        fun readValue(r: Register) {
-            if (address != -1) {
-                value = read(bank, address, r.size)
-            } else if (value != -1 && result == AddressModeResult.IMMEDIATE && r.size > 1) {
-                value = Short(value, inst.addressMode.fetchValue())
-            }
-        }
-
-        fun writeValue(res: Int, r: Register) {
-            if (address != -1) {
-                write(bank, address, res, r.size)
-            } else if (result == AddressModeResult.ACCUMULATOR) {
-                rA.set(res)
-            }
-        }
-    }
-
     var waitForInterrupt = false
         private set
 
@@ -1350,6 +1288,68 @@ class Processor(
         )
 
         operator fun get(index: Int) = instructions[index]
+    }
+
+    private inner class InstructionData {
+        lateinit var inst: Instruction
+        var address: ShortAddress = -1
+        var bank: Int = -1
+        var result: AddressModeResult = AddressModeResult.NOTHING
+        var value: Int = -1
+
+        fun updateInst(inst: Instruction) {
+            this.inst = inst
+            result = inst.addressMode.result
+            when {
+                result.address -> {
+                    value = inst.addressMode.fetchValue()
+
+                    bank = when (result) {
+                        AddressModeResult.ADDRESS_0 -> 0
+                        AddressModeResult.FULLADDRESS -> value.bank
+                        AddressModeResult.SHORTADDRESS,
+                        AddressModeResult.ADDRESS_PBR -> rPBR.get()
+                        AddressModeResult.ADDRESS_DBR -> rDBR.get()
+                        else -> error("should never be possible to happen")
+                    }
+                    address = when (result) {
+                        AddressModeResult.ADDRESS_PBR,
+                        AddressModeResult.ADDRESS_0,
+                        AddressModeResult.ADDRESS_DBR,
+                        AddressModeResult.SHORTADDRESS -> value
+                        AddressModeResult.FULLADDRESS -> value.shortAddress
+                        else -> error("should never be possible to happen")
+                    }
+
+                    value = -1
+                }
+                result == AddressModeResult.IMMEDIATE ||
+                        result.value -> {
+                    address = -1
+                    value = inst.addressMode.fetchValue()
+                }
+                else -> {
+                    address = -1
+                    value = -1
+                }
+            }
+        }
+
+        fun readValue(r: Register) {
+            if (address != -1) {
+                value = read(bank, address, r.size)
+            } else if (value != -1 && result == AddressModeResult.IMMEDIATE && r.size > 1) {
+                value = Short(value, inst.addressMode.fetchValue())
+            }
+        }
+
+        fun writeValue(res: Int, r: Register) {
+            if (address != -1) {
+                write(bank, address, res, r.size)
+            } else if (result == AddressModeResult.ACCUMULATOR) {
+                rA.set(res)
+            }
+        }
     }
 
     fun getInstruction(opCode: Int)
