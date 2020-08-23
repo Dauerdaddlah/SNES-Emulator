@@ -24,3 +24,7 @@ fun Int.toHexString() = this.toString(16)
 fun Int.toHexString(size: Int) = "%0${size}x".format(this)
 fun Bank.toBankString() = this.toHexString(2)
 fun ShortAddress.toAddressString() = this.toHexString(4)
+
+fun slog(text: String) {
+    println(text)
+}

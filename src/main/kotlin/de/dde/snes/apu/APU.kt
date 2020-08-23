@@ -1,8 +1,6 @@
 package de.dde.snes.apu
 
-import de.dde.snes.SNES
 import de.dde.snes.memory.Bank
-import de.dde.snes.memory.Memory
 import de.dde.snes.memory.MemoryMapping
 import de.dde.snes.memory.ShortAddress
 

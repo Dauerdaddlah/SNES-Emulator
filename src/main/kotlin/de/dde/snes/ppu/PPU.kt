@@ -5,7 +5,6 @@ import de.dde.snes.memory.Bank
 import de.dde.snes.memory.Memory
 import de.dde.snes.memory.MemoryMapping
 import de.dde.snes.memory.ShortAddress
-import java.awt.Color
 
 class PPU(
     private val snes: SNES
@@ -17,6 +16,7 @@ class PPU(
     val window2 = MaskWindow()
     val colorMath = ColorMath()
 
+    /** when set, display is deactivated (blank) and vram can be accessed */
     var forceBlank = false
     var brightness = 0x00 // TODO
     var objSize = ObjectSize.byCode(0)
@@ -24,13 +24,24 @@ class PPU(
     var nameBaseSelect = 0
     var mosaicSize = 1
 
+    /** the last value written to one of the bgnoffs-registers 210d-2114 */
     var bgnOffsPrev1 = 0
+    /** the pre-last value written to one of the bgnoffs-registers 210d-2114 */
     var bgnOffsPrev2 = 0
 
+    /** whether the counters have been latched, will be reset on reading of 0x213F */
     var countersLatched = false
+    /** the current horizontal offset of the beam */
     var hoffset = 0
+    /** the last latched horizontal scanline position */
+    var hoffsetLatched = 0
+    /** the horizontal scanline in 9-bits long but read via 1 register, therefore this tells whether to return the high or low byte */
     var hoffsetHigh = false
+    /** the current vertical offset of the beam */
     var voffset = 0
+    /** the last latched vertical scanline position */
+    var voffsetLatched = 0
+    /** the vertical scanline in 9-bits long but read via 1 register, therefore this tells whether to return the high or low byte */
     var voffsetHigh = false
 
     var inVBlank = false
@@ -41,7 +52,7 @@ class PPU(
     var product = 0
 
     var externalSync = false
-    var pseuoHire = false
+    var pseudoHire = false
     var overscan = false
     var objInterlace = false
     var screenInterlace = false
@@ -85,14 +96,16 @@ class PPU(
         bgnOffsPrev1 = 0
         bgnOffsPrev2 = 0
         hoffset = 0
+        hoffsetLatched = 0
         hoffsetHigh = false
         voffset = 0
+        voffsetLatched = 0
         voffsetHigh = false
         inVBlank = false
         inHBlank = false
         product = 0
         externalSync = false
-        pseuoHire = false
+        pseudoHire = false
         overscan = false
         objInterlace = false
         screenInterlace = false
@@ -104,9 +117,58 @@ class PPU(
         bgMode = 0
     }
 
+    // TODO
+    val cycles = 0
+    var d = 0
+    fun updateCycles(cycles: Int) {
+        d += cycles - this.cycles
+
+        while(d >= CYCLES_PER_TICK) {
+            d -= CYCLES_PER_TICK
+            hoffset++
+
+            if (hoffset == FIRST_H_OFFSET) {
+                inHBlank = false
+            }
+
+            if (hoffset == FIRST_H_OFFSET + snes.version.width) {
+                inHBlank = true
+                snes.dma.forEach { it.doHdmaForScanline(voffset) }
+            }
+
+            if (hoffset == FIRST_H_OFFSET + snes.version.width + snes.version.vWidthEnd) {
+                hoffset = 0
+                voffset++
+
+                if (voffset == FIRST_V_OFFSET) {
+                    inVBlank = false
+                }
+
+                if (voffset == FIRST_V_OFFSET + snes.version.heigth) {
+                    inVBlank = true
+                    if (snes.cpu.nmiEnabled)
+                    snes.processor.NMI()
+                }
+
+                if (voffset == FIRST_V_OFFSET + snes.version.heigth + snes.version.vHeightEnd) {
+                    voffset = 0
+                }
+            }
+
+            if (snes.cpu.xIrqEnabled && hoffset == snes.cpu.htime) {
+                snes.processor.IRQ()
+            }
+
+            if (snes.cpu.yIrqEnabled && voffset == snes.cpu.vtime) {
+                snes.processor.IRQ()
+            }
+        }
+    }
+
     fun latchCounter() {
         countersLatched = true
-        // TODO LATCH COUNTER
+        hoffsetLatched = hoffset
+        voffsetLatched = voffset
     }
 
     // TODO check if access is possible at any time or only in specific blanks
@@ -213,12 +275,12 @@ class PPU(
                 cgram.read()
             }
             0x213C -> {
-                val r = if (hoffsetHigh) hoffset.highByte() else hoffset.lowByte()
+                val r = if (hoffsetHigh) hoffsetLatched.highByte() else hoffsetLatched.lowByte()
                 hoffsetHigh = !hoffsetHigh
                 return r
             }
             0x213D -> {
-                val r = if (voffsetHigh) voffset.highByte() else voffset.lowByte()
+                val r = if (voffsetHigh) voffsetLatched.highByte() else voffsetLatched.lowByte()
                 voffsetHigh = !voffsetHigh
                 return -r
             }
@@ -278,6 +340,7 @@ class PPU(
             }
             0x2105 -> {
                 bgMode = value and 0x07
+                slog("BGMODE $bgMode")
                 bg3Prio = value.isBitSet(0x08)
                 backgrounds[0].bigSize = value.isBitSet(0x10)
                 backgrounds[1].bigSize = value.isBitSet(0x20)
@@ -487,7 +550,7 @@ class PPU(
             0x2133 -> {
                 externalSync = value.isBitSet(0x80)
                 mode7.extBg = value.isBitSet(0x40)
-                pseuoHire = value.isBitSet(0x08)
+                pseudoHire = value.isBitSet(0x08)
                 overscan = value.isBitSet(0x04)
                 objInterlace = value.isBitSet(0x02)
                 screenInterlace = value.isBitSet(0x01)
@@ -509,6 +572,12 @@ class PPU(
     companion object {
         const val M7HOFS = 0x10001
         const val M7VOFS = 0x10002
+
+        const val CYCLES_PER_TICK = 4
+        /** the first horizontal position per scanline in which we actively project on the screen */
+        const val FIRST_H_OFFSET = 22
+        /** the first horizontal position per scanline in which we actively project on the screen */
+        const val FIRST_V_OFFSET = 1
     }
 }
 

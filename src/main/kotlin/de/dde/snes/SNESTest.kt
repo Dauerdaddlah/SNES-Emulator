@@ -29,32 +29,7 @@ fun main() {
 
     snes.insertCartridge(c)
 
-    val processor = snes.processor
+    snes.reset()
 
-    processor.reset()
-
-    var i = 0
-    var cc = 0
-    var c2 = 0
-    val t = measureTimeMillis {
-        while (true) {
-            cc++
-            if (cc == 1000000) {
-                c2++
-                cc = 0
-                println("${c2}")
-            }
-            //print("$it ")
-            processor.executeNextInstruction()
-
-            if (processor.waitForInterrupt) {
-                processor.NMI()
-                i++
-                break
-            }
-        }
-    }
-
-    println("$t - $i")
-    //println(m.byte(memory, 0, v and 0xF000 ushr 12, v and 0xFFF).toString(16))
+    snes.start()
 }

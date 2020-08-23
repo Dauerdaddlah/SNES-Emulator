@@ -21,16 +21,21 @@ class Controllers(
 
     var programmableIo14201 = true
     var programmableIo14213 = true
+    /** whether the physical line is high, this is, if any is high of io1-4201, io1-4213 or io of controller 1 */
     var programmableIo1Line = true
         private set
+
     var programmableIo24201 = true
     var programmableIo24213 = true
+    /** whether the physical line is high, this is, if any is high of io2-4201, io2-4213 or io of controller 2 */
     var programmableIo2Line = true
         private set
 
     var strobe = false
+    /** whether auto-joypad-read is currently active */
     var autoJoypadReadActive = false
         private set
+    /** the index of the bit to read next on auto-joypad-read */
     var autoJoypadReadCounter = 0
         private set
 

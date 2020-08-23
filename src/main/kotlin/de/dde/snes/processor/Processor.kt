@@ -85,14 +85,14 @@ class Processor(
         rS.size16Bit = mode == ProcessorMode.NATIVE
     }
 
-    val log = SnesLog("new.log", 1000000, true)
-
     fun executeNextInstruction() {
+        // TODO correct cycles
+        // add 1 cycle no matter the action
+        cycles++
+
         if (waitForInterrupt) {
             return
         }
-
-        log.prepare(rA.getFull(), rX.get(), rY.get(), rS.get(), rD.get(), rP.get(), rPC.get(), rDBR.get(), rPBR.get(), mode == ProcessorMode.EMULATION)
 
         val i = fetch()
         val inst = instructions[i]
@@ -100,8 +100,6 @@ class Processor(
         instructionCount++
 
         execute(inst)
-
-        log.log(instData.inst.operation.symbol, instData.address, instData.value)
     }
 
     fun execute(inst: Instruction) {
@@ -126,11 +124,16 @@ class Processor(
         = fetchShort().withLongByte(fetch())
 
     fun NMI() {
+        slog("NMI")
         nmiFlag = true
         interrupt(NMI_VECTOR_ADDRESS, NMI_VECTOR_ADDRESS)
     }
 
     fun IRQ() {
+        if (rP.irqDisable) {
+            return
+        }
+        slog("IRQ")
         irqFlag = true
         interrupt(IRQ_VECTOR_ADDRESS, IRQ_VECTOR_ADDRESS)
     }
