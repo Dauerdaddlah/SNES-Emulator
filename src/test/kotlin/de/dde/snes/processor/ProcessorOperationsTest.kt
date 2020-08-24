@@ -34,8 +34,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF6, 0x44)
-                memory.returnFor(0x00, 0xFFF7, 0x55)
+                memory.returnFor(0x00, 0xFFE6, 0x44)
+                memory.returnFor(0x00, 0xFFE7, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
@@ -56,8 +56,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF6, 0x44)
-                memory.returnFor(0x00, 0xFFF7, 0x55)
+                memory.returnFor(0x00, 0xFFE6, 0x44)
+                memory.returnFor(0x00, 0xFFE7, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
@@ -77,8 +77,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF6, 0x44)
-                memory.returnFor(0x00, 0xFFF7, 0x55)
+                memory.returnFor(0x00, 0xFFE6, 0x44)
+                memory.returnFor(0x00, 0xFFE7, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
@@ -181,8 +181,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF4, 0x44)
-                memory.returnFor(0x00, 0xFFF5, 0x55)
+                memory.returnFor(0x00, 0xFFE4, 0x44)
+                memory.returnFor(0x00, 0xFFE5, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
@@ -203,8 +203,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF4, 0x44)
-                memory.returnFor(0x00, 0xFFF5, 0x55)
+                memory.returnFor(0x00, 0xFFE4, 0x44)
+                memory.returnFor(0x00, 0xFFE5, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
@@ -224,8 +224,8 @@ class ProcessorOperationsTest {
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
-                memory.returnFor(0x00, 0xFFF4, 0x44)
-                memory.returnFor(0x00, 0xFFF5, 0x55)
+                memory.returnFor(0x00, 0xFFE4, 0x44)
+                memory.returnFor(0x00, 0xFFE5, 0x55)
 
                 status.decimal = false
                 status.irqDisable = true
