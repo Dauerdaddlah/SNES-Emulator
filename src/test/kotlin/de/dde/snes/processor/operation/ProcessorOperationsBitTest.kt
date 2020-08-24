@@ -143,8 +143,8 @@ class ProcessorOperationsBitTest {
                 "0x80, 0x80, true, false, false",
                 "0x40, 0x40, false, false, true",
                 "0xFF, 0xFF, true, false, true",
-                "0xAA, 0x55, false, true, false",
-                "0x3C, 0xF0, false, false, false",
+                "0xAA, 0x55, false, true, true",
+                "0x3C, 0xF0, true, false, true",
                 "0x0F, 0x3C, false, false, false",
                 "0xFF, 0xF0, true, false, true"
             )
@@ -218,7 +218,7 @@ class ProcessorOperationsBitTest {
                 "0x8000, 0x00, 0x80, true, false, false",
                 "0x4000, 0x00, 0x40, false, false, true",
                 "0xFFFF, 0xFF, 0xFF, true, false, true",
-                "0xAAAA, 0x55, 0x55, false, true, false",
+                "0xAAAA, 0x55, 0x55, false, true, true",
                 "0xC33C, 0xF0, 0x0F, false, false, false",
                 "0x0FF0, 0xC3, 0x3C, false, false, false",
                 "0xC000, 0x00, 0xC0, true, false, true"
