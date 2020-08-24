@@ -30,7 +30,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -52,7 +52,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -73,7 +73,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -100,7 +100,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
@@ -121,7 +121,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
@@ -141,7 +141,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
@@ -177,7 +177,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -199,7 +199,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -220,7 +220,7 @@ class ProcessorOperationsTest {
                 memory.expectWrite(0x00, 0x01FF, 0x11)
 
                 memory.expectWrite(0x00, 0x01FE, 0x22)
-                memory.expectWrite(0x00, 0x01FD, 0x35)
+                memory.expectWrite(0x00, 0x01FD, 0x34)
 
                 memory.expectWrite(0x00, 0x01FC, status.get())
 
@@ -247,7 +247,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
@@ -267,7 +267,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
@@ -286,7 +286,7 @@ class ProcessorOperationsTest {
                 prepareProcessor(pc = 0x2233, s = 0x01FF)
 
                 memory.expectWrite(0x00, 0x01FF, 0x22)
-                memory.expectWrite(0x00, 0x01FE, 0x35)
+                memory.expectWrite(0x00, 0x01FE, 0x34)
 
                 memory.expectWrite(0x00, 0x01FD, status.get())
 
