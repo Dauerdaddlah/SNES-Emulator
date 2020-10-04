@@ -1,0 +1,162 @@
+
+<p>
+<a href="https://github.com/gilligan/snesdev/blob/master/docs/65816.txt" class="urlextern" title="https://github.com/gilligan/snesdev/blob/master/docs/65816.txt" rel="ugc nofollow">https://github.com/gilligan/snesdev/blob/master/docs/65816.txt</a>
+</p>
+
+<p>
+Das SNES hat einen abgewandelten Prozessor zum Western Digital W65C816S.
+Dieser arbeitet mit 92 Operationen, 24 Addressmodes, 6 16-BIT Register(A, PC, X, Y, D, S) und 3 8-BIT Registern (P, PBR, DBR)
+</p>
+
+<h1 class="sectionedit1" id="register">Register</h1>
+<div class="level1">
+
+<p>
+Um arbeiten zu können hat der Prozessor eine Anzahl an Register, welcher (mehr oder minder) beliebig genutzt werden können.
+Ein Register ist immer 8- oder 16-BIT groß - ein 16-BIT Register kann aber auch als 8-BIT Register verwendet werden.
+wird ein &#039;volles&#039; Register ($FF bei 8-BIT, $FFFF bei 16-BIT) weiter erhöht oder ein &#039;leeres&#039; Register ($0000) gesenkt so gibt es einen Überlauf ($FF → $00).
+<strong>Achtung</strong> wird ein 16-BIT Register als 8-BIT verwendet, so passirt der Überlauf auch auf 8-BIT.
+Sprich wird z. B. der Accumulator als 8-BIT genutzt und hat den Wert $12FF wird sein nächster Wert $1200 sein und nicht $1300.
+</p>
+<div class="table sectionedit2"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Register </th><th class="col1"> Größe </th><th class="col2"> Beschreibung </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> PC </td><td class="col1"> 16-BIT </td><td class="col2"> <strong>P</strong>rogram <strong>C</strong>ounter - die 16-BIT Adresse innerhalb der aktuellen Bank (PBR) welche aktuel selektiert ist. Diese Adresse wird genutzt, um den nächsten Befehl zu holen oder um Addressmodi aufzulösen </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> P </td><td class="col1"> 8-BIT </td><td class="col2"> Statusregister - hält 8 Status (1 je Bit) als Folge der vorangegangenen Operationen </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> PBR </td><td class="col1"> 8-BIT </td><td class="col2"> <strong>P</strong>rogram <strong>B</strong>ank <strong>R</strong>egister - enthält die Bank für den aktuellen/nächsten Befehl (PC). Wird ebenfalls für einige Addressmodi verwendet </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> DBR </td><td class="col1"> 8-BIT </td><td class="col2"> <strong>D</strong>ata <strong>B</strong>ank <strong>R</strong>egister - wie PBR, wird für einige Addressmodi verwendet </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> A </td><td class="col1"> 8/16-BIT </td><td class="col2"> <strong>A</strong>ccumulator - Der accumulator wird für so ziemlich alle internen REchnungen verwendet, er ist das &#039;Hilfsregister&#039;. Er hält <strong>immer</strong> 16-BIT, je nach Prozessormodus und P wird er jedoch u. U. als 8-BIT Register verwendet. In diesem Fall bleibt das höhere Byte erhalten und kann mit einer speziellen Operation als zusätzlicher Speicher verwendet werden. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> X/Y </td><td class="col1"> 8/16-BIT </td><td class="col2"> das X und das Y-Register ist jeweils ein weiteres Hilfsregister, wie der Accumulator um Aktionen auszuführen. Je nach P wird es als 8 oder 16-BIT Register verwendet. Wenn es als 8-BIT Register genutzt wird ist das höhere (ungenutzte) Byte immer $00 </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> D </td><td class="col1"> 16-BIT </td><td class="col2"> <strong>D</strong>irect Register - wird für alle Direct-Addressmodi verwendet. Das Direct Register wird immer dann verwendet, wenn der Addressmodus nur 1 Byte erhält und soll die Page darstellen. Insofern hat diesen Register in der Regel die Form $xx00. Sollte das untere Byte einen anderen Wert haben führt dies in der Regel zu einem zusätzlich benötigten Cycle </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> S </td><td class="col1"> 8/16-Bit </td><td class="col2"> <strong>S</strong>tack Register - verwaltet die nächste zu verwendende Addresse auf dem Stack. Je nach Prozessormodus wird dieser Pointer asl 8- oder 16-BIT verwendet. Im 8-BIT modus ist dabei das höhere Byte immer $01 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;925-2796&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Register&quot;,&quot;hid&quot;:&quot;register&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;269-2797&quot;} -->
+<h2 class="sectionedit3" id="program_counter_pc">Program Counter (PC)</h2>
+<div class="level2">
+
+<p>
+Der Program Counter ist ein 16-BIT Register, das sehr eng mit dem PBR zusammenarbeiten.
+Er zeigt auf die nächste auszuführende Instruktion innerhalb des PBR (PBR|PC bilden die effektive Addresse).
+wann immer ein Wert mit Hilfe des PC gelesen wird, wird dieser um 1 erhöht.
+Werden für den Addressmodus noch weitere Werte benötigt werden diese (soweit nicht anders beschrieben) mit Hilfe des PC geholt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Program Counter (PC)&quot;,&quot;hid&quot;:&quot;program_counter_pc&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2798-3238&quot;} -->
+<h3 class="sectionedit4" id="direct_page_zero_page_d">Direct Page/Zero Page (D)</h3>
+<div class="level3">
+
+<p>
+Die Zero Page aus dem originalen 6502 (NES) wurde im SNES Prozessor nach Direct Page umbenannt.
+Immer wenn ein Addressmodus mit einem Byte gewählt wird bestimmt die Direct Page die Page-Adresse (mittleres Byte)
+Die Direct Page ist 16-Bit groß und kann dementsprechend neben der Page auch einen Versatz für das Byte beinhalten, jedoch wird in dem Fall (Low-Byte != 0) ein Cycle mehr benötigt.
+Im Emulation Mode ist die Adressierung in der Direct Page gefangen, sprich ein Rollover nach $FF beginnt wieder bei $00 der Direct Page (NES).
+Im Native Mode hingegen geht ein Rollover in die nächste Page.
+Beispiel:
+</p>
+<pre class="code">LDX #$2c
+LDA ($E0,X)</pre>
+
+<p>
+In Emulation Mode ergibt dies die Adresse $0C, im Native Mode $10C
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Direct Page\/Zero Page (D)&quot;,&quot;hid&quot;:&quot;direct_page_zero_page_d&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3239-3992&quot;} -->
+<h3 class="sectionedit5" id="stack_pointer_s">Stack Pointer (S)</h3>
+<div class="level3">
+
+<p>
+Der Stack Pointer ist 16-Bit groß und zeigt auf die nächste leere (zu nutzende) Speicheradresse für den Stack.
+Im Emulation Mode wird das High-Byte (Page) immer auf $01 gezwungen (NES).
+Der Stack Pointer wird entsprechend im Emulation Mode als 8-Bit Register gehandelt.
+In der Regel ist/wird der Stack Pointer zum Programmstart auf $01FF initialisiert.
+Wird ein Element auf dem Stack abgelegt, so wird der Wert auf die Adresse des Stack Pointers gelegt und dieser anschließend um 1 gesenkt.
+Der Pull geschieht entsprechend umgekehrt, erst wird der Pointer incrementiert und anschließend wird der Wert gelesen.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stack Pointer (S)&quot;,&quot;hid&quot;:&quot;stack_pointer_s&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3993-4637&quot;} -->
+<h3 class="sectionedit6" id="program_bank_register_pbr">Program Bank Register (PBR)</h3>
+<div class="level3">
+
+<p>
+Der PBR ist ein 8-Bit Register welches die Bank zum PC beschreiben.
+Der PBR wird immer verwendet, wenn das nächste Byte im Ablauf geholt wird, entweder die Instruktion, oder direkt darauf folgenden Bytes für den Addresmodus.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Program Bank Register (PBR)&quot;,&quot;hid&quot;:&quot;program_bank_register_pbr&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;4638-4904&quot;} -->
+<h3 class="sectionedit7" id="data_bank_register_dbr">Data Bank register (DBR)</h3>
+<div class="level3">
+
+<p>
+Der DBR ist ein 8-Bit Register welches die Bank für bestimmte Addressmodi hält.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Data Bank register (DBR)&quot;,&quot;hid&quot;:&quot;data_bank_register_dbr&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;4905-5023&quot;} -->
+<h3 class="sectionedit8" id="status_register_p">Status Register (P)</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Status Register (P)&quot;,&quot;hid&quot;:&quot;status_register_p&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;5024-5053&quot;} -->
+<h3 class="sectionedit9" id="accumulator_a">Accumulator (A)</h3>
+<div class="level3">
+
+<p>
+Der Accumulator ist einer der Hauptregister mit denen gearbeitet wird.
+Er wird hauptsächlich verwendet, wenn man Daten lesen schreiben und verrechnen möchte.
+Er ist 16-Bit groß und kann im 8-Bit Modus verwendet werden (je nach P).
+Im Gegensatz zu allen anderen “variablen” Register behält der Accumulator den Wert seines High-Byte bei.
+So kann das High-Byte im 8-Bit modus als zusätzlicher Speicher verwendet werden.
+Mit Hilfe der XBA instruktion kann so der Wert des High und des Low-Bytes getauscht werden.
+</p>
+
+<p>
+je nach Situation hat der Accumulator drei Namen, A, B und C.
+Mit C ist der Accumulator immer als 16-Bit Register bezeichnet.
+Dementsprechend tauscht die Instruktion TCS immer die kompletten 16-Bit von A (C) nach S.
+B beschreibt immer das High-Byte des Accumulators.
+A beschreibt je nach Kontext entweder den Accumulator allgemein oder nur das LOW-Byte (z. B. in XBA - exchange B and A).
+Einige Assembler nehmen diese Trennund nicht 100% und erlauben so auch z. B. die Operation TAS als Synonym für TCS.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accumulator (A)&quot;,&quot;hid&quot;:&quot;accumulator_a&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:9,&quot;range&quot;:&quot;5054-6101&quot;} -->
+<h3 class="sectionedit10" id="x_y_register_x_y">X/Y Register (X/Y)</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;X\/Y Register (X\/Y)&quot;,&quot;hid&quot;:&quot;x_y_register_x_y&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;6102-6131&quot;} -->
+<h2 class="sectionedit11" id="prozessormodi">Prozessormodi</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prozessormodi&quot;,&quot;hid&quot;:&quot;prozessormodi&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;6132-6157&quot;} -->
+<h2 class="sectionedit12" id="stack_operationen">Stack Operationen</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stack Operationen&quot;,&quot;hid&quot;:&quot;stack_operationen&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:12,&quot;range&quot;:&quot;6158-&quot;} -->

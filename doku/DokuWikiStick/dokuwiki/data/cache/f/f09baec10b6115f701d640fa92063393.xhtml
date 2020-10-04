@@ -1,0 +1,262 @@
+
+<p>
+<a href="https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map" class="urlextern" title="https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map" rel="ugc nofollow">https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map</a>
+<a href="https://sneslab.net/wiki/SNES_ROM_Header" class="urlextern" title="https://sneslab.net/wiki/SNES_ROM_Header" rel="ugc nofollow">https://sneslab.net/wiki/SNES_ROM_Header</a>
+<a href="https://snesdev.mesen.ca/wiki/index.php?title=Internal_ROM_Header" class="urlextern" title="https://snesdev.mesen.ca/wiki/index.php?title=Internal_ROM_Header" rel="ugc nofollow">https://snesdev.mesen.ca/wiki/index.php?title=Internal_ROM_Header</a>
+<a href="https://www.youtube.com/watch?v=RAa561BoWwA" class="urlextern" title="https://www.youtube.com/watch?v=RAa561BoWwA" rel="ugc nofollow">https://www.youtube.com/watch?v=RAa561BoWwA</a>
+</p>
+
+<p>
+Eine SNES ROM (Dateiendung .smc) ist eine Binärdatei, die den Inhalt einer SNES-Cartridge enthält.
+Die SMC-Datei besteht aus einem optionalen SMC-Header und der eigentlichen ROM.
+Der SMC-Header (wenn vorhanden) wird von der extrahierenden vor die eigentlich ROM gelegt udn soll Informationen über die ROM enthalten (z. B. Name und größe).
+Der SMC-Header ist 512 Byte ($200) groß.
+Sollte ein SMC-Header vorhanden sein, muss dieser für die Emulation entfernt werden (bzw. nicht beachtet).
+</p>
+
+<p>
+Ein SMC-Header besteht in der Regel aus:
+</p>
+<ul>
+<li class="level1"><div class="li"> Byte 0: der ROM-Größe geteilt durch 8 KB ($8000) And 255 ($FF)</div>
+</li>
+<li class="level1"><div class="li"> Byte 1: der ROM-Größe right shift 8 (geteilt durch 256)</div>
+</li>
+<li class="level1"><div class="li"> Byte 2: dem ROM-Typ ($xFD6 der ROM, ROM-Header byte $26)</div>
+</li>
+<li class="level1"><div class="li"> Der Rest kann mit $00 aufgefüllt werden. Ich vermute der Inhalt ist abhängig vom “extrahierer”</div>
+</li>
+</ul>
+
+<p>
+Wie finde ich heraus, ob ein SMC-Header vorhanden ist?
+Eine ROM ist immer (?) exakt ein vielfaches von 1 KB ($400) groß, der HEader immer (?) 512 Byte.
+Teilt man die Größe der gesamten SMC-Datei durch diese 1024 ($400), so
+</p>
+<ul>
+<li class="level1"><div class="li"> ist das Ergebnis 0, wenn kein Header vorhanden ist</div>
+</li>
+<li class="level1"><div class="li"> ist das Ergebnis 512 ($200), wenn ein Header vorhanden ist.</div>
+</li>
+<li class="level1"><div class="li"> alle anderen Ergebnisse zeigen auf eine korrupte ROM hin (z. B. malformed Header)</div>
+</li>
+</ul>
+
+<p>
+In der letzten Page der ersten Bank befindet sich der SNES-Header, welcher Informationen zur ROM enthält.
+In einem LoROM-Mapping ist dies $7F00 und bei HiROM $FF00.
+Es gibt 3 Versionen des Headers.
+</p>
+<ul>
+<li class="level1"><div class="li"> Version 1 ist 64 Byte groß und befindet sich bei $C0 - $FF</div>
+</li>
+<li class="level1 node"><div class="li"> Version 2 wird dadurch bestimmt, dass $D4 den Wert $00 hat.</div>
+<ul>
+<li class="level2"><div class="li"> $D4 das letzte Zeichen des ROM-Namens muss $00 sein</div>
+</li>
+<li class="level2"><div class="li"> Byte $B0 - $BF werden hinzugefügt, sodass der gesamte Header 80 ($50) Byte groß ist von $B0 - $FF</div>
+</li>
+<li class="level2"><div class="li"> $BF enthält zusatzinformationen zum ROM-Typ</div>
+</li>
+<li class="level2"><div class="li"> $B0 - $BE sind fest $00</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Version 3 ist eine Erweiterung von Version 2 und wird durch Byte $DA bestimmt</div>
+<ul>
+<li class="level2"><div class="li"> $DA Device ID wird mit dem festen Wert $33 ersetzt</div>
+</li>
+<li class="level2"><div class="li"> $D4 ist wieder ein normaler Teil des ROM-Names</div>
+</li>
+<li class="level2"><div class="li"> $B0 - $BE enthalten weitere Informationen</div>
+</li>
+<li class="level2"><div class="li"> Device ID ist nun 2 Byte groß und bei $D0 - $D1</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+Der SNES-Header hat folgende Daten:
+Version 3
+</p>
+<ul>
+<li class="level1"><div class="li"> 2 Byte $B0 Dev ID (Version 3) Identifikation des Entwicklers</div>
+</li>
+<li class="level1"><div class="li"> 4 Byte $B2 Game Code (Version 3) Ascii-Test zur Beschreibung des Spiels z. B. SNES, GAME, FIRE , W00T</div>
+</li>
+<li class="level1"><div class="li"> 6 Byte $B6 Fixed Value/ Unused (Version 3) ist immer (?) $00</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $BC Flash Memory (Version 3) Größe gemäß Formel unten</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $BD extension RAM size (Version 3) Größe des RAMs des Erweiterungsmoduls gemäß unten stehender Formel</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $BE Special Version (Version 3) Soll z. B. Eventversion markieren, für gewähnlich $00</div>
+</li>
+</ul>
+
+<p>
+Version 2
+</p>
+<ul>
+<li class="level1"><div class="li"> 15 Byte $B0 ignoriert, sind immer (?) $00</div>
+</li>
+</ul>
+
+<p>
+Version 2/3
+</p>
+<ul>
+<li class="level1"><div class="li"> 1 Byte $BF Co-CPU-Type (Version 2/3) Typ des zusätzlichen Prozessors in der Cartridge</div>
+</li>
+</ul>
+
+<p>
+Alle Versionen
+</p>
+<ul>
+<li class="level1 node"><div class="li"> 21 Byte $C0 ROM Name Interner Name der ROM</div>
+<ul>
+<li class="level2"><div class="li"> Wenn $D4 den Wert $00 hat, wird Version 2 genutzt</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> 1 Byte $D5 Mapping Mode (Alle Versionen</div>
+</li>
+<li class="level1 node"><div class="li"> 1 Byte $D6 Cartridge Type</div>
+<ul>
+<li class="level2"><div class="li"> $00 ROM Only</div>
+</li>
+<li class="level2"><div class="li"> $01 ROM + RAM</div>
+</li>
+<li class="level2"><div class="li"> $02 ROM + RAM + SRAM</div>
+</li>
+<li class="level2 node"><div class="li"> bei anderen Werten:</div>
+<ul>
+<li class="level3 node"><div class="li"> beginnt der Wert mit</div>
+<ul>
+<li class="level4"><div class="li"> $0* DSP</div>
+</li>
+<li class="level4"><div class="li"> $1* SuperFX</div>
+</li>
+<li class="level4"><div class="li"> $2* OBC1</div>
+</li>
+<li class="level4"><div class="li"> $3* SA-1</div>
+</li>
+<li class="level4"><div class="li"> $E* Other</div>
+</li>
+<li class="level4"><div class="li"> $F* Custom Chip</div>
+</li>
+</ul>
+</li>
+<li class="level3 node"><div class="li"> endet der Wert mit</div>
+<ul>
+<li class="level4"><div class="li"> $*3 ROM + Enhancement Chip</div>
+</li>
+<li class="level4"><div class="li"> $*4 ROM + Enhancement Chip + RAM</div>
+</li>
+<li class="level4"><div class="li"> $*5 ROM + Enhancement Chip + RAM + SRAM</div>
+</li>
+<li class="level4"><div class="li"> $*6 ROM + Enhancement Chip + SRAM</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> 1 Byte $D7 ROM Size gemäß unten stehender Formel</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $D8 RAM Size gemäß unten stehendet Formel</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $D9 Region Code</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $DA Dev ID s. Version 3 Byte $B0, wenn dieses Byte $33 ist ist Version 3 in Benutzung</div>
+</li>
+<li class="level1"><div class="li"> 1 Byte $DB Version der ROM</div>
+</li>
+<li class="level1"><div class="li"> 2 Byte $DC Checksum Complement</div>
+</li>
+<li class="level1"><div class="li"> 2 Byte $DE Checksum</div>
+</li>
+</ul>
+
+<p>
+Region
+</p>
+<div class="table sectionedit1"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Region </th><th class="col1"> Code </th><th class="col2"> Type </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> Japan </td><td class="col1"> $00 </td><td class="col2"> NTSC </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> North America </td><td class="col1"> $01 </td><td class="col2"> NTSC </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> Europe </td><td class="col1"> $02 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> Sweden/Scandinavia </td><td class="col1"> $03 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> Finland </td><td class="col1"> $04 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> Denmark </td><td class="col1"> $05 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> France </td><td class="col1"> $06 </td><td class="col2"> SECAM (PAL-Like, 50 Hz) </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> Netherlands </td><td class="col1"> $07 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> Spain </td><td class="col1"> $08 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> Germany </td><td class="col1"> $09 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> Italy </td><td class="col1"> $0A </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> China </td><td class="col1"> $0B </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> Indonesia </td><td class="col1"> $0C </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> Korea </td><td class="col1"> $0D </td><td class="col2"> NTSC </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> Global (?) </td><td class="col1"> $0E </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> Canada </td><td class="col1"> $0F </td><td class="col2"> NTSC </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> Brazil </td><td class="col1"> $10 </td><td class="col2"> PAL-M (NTSC-Like, 60 Hz) </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> Australia </td><td class="col1"> $11 </td><td class="col2"> PAL </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> Other (1) </td><td class="col1"> $12 </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> Other (2) </td><td class="col1"> $13 </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> Other (3) </td><td class="col1"> $14 </td><td class="col2"> ? </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:1,&quot;range&quot;:&quot;4066-4651&quot;} -->
+<p>
+Größenformel
+Die in der ROM eingetragenen Größen Werten berechnet über die Formel log2(size in kB).
+Im Umkehrschluss entscheidetsich die Größe in kB aus 2^Wert.
+</p>

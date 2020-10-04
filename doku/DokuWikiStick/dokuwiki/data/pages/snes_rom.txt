@@ -1,0 +1,111 @@
+[[https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map]]
+[[https://sneslab.net/wiki/SNES_ROM_Header]]
+[[https://snesdev.mesen.ca/wiki/index.php?title=Internal_ROM_Header]]
+[[https://www.youtube.com/watch?v=RAa561BoWwA]]
+
+Eine SNES ROM (Dateiendung .smc) ist eine Binärdatei, die den Inhalt einer SNES-Cartridge enthält.
+Die SMC-Datei besteht aus einem optionalen SMC-Header und der eigentlichen ROM.
+Der SMC-Header (wenn vorhanden) wird von der extrahierenden vor die eigentlich ROM gelegt udn soll Informationen über die ROM enthalten (z. B. Name und größe).
+Der SMC-Header ist 512 Byte ($200) groß.
+Sollte ein SMC-Header vorhanden sein, muss dieser für die Emulation entfernt werden (bzw. nicht beachtet).
+
+Ein SMC-Header besteht in der Regel aus:
+  * Byte 0: der ROM-Größe geteilt durch 8 KB ($8000) And 255 ($FF)
+  * Byte 1: der ROM-Größe right shift 8 (geteilt durch 256)
+  * Byte 2: dem ROM-Typ ($xFD6 der ROM, ROM-Header byte $26)
+  * Der Rest kann mit $00 aufgefüllt werden. Ich vermute der Inhalt ist abhängig vom "extrahierer"
+
+Wie finde ich heraus, ob ein SMC-Header vorhanden ist?
+Eine ROM ist immer (?) exakt ein vielfaches von 1 KB ($400) groß, der HEader immer (?) 512 Byte.
+Teilt man die Größe der gesamten SMC-Datei durch diese 1024 ($400), so
+  * ist das Ergebnis 0, wenn kein Header vorhanden ist
+  * ist das Ergebnis 512 ($200), wenn ein Header vorhanden ist.
+  * alle anderen Ergebnisse zeigen auf eine korrupte ROM hin (z. B. malformed Header)
+
+In der letzten Page der ersten Bank befindet sich der SNES-Header, welcher Informationen zur ROM enthält.
+In einem LoROM-Mapping ist dies $7F00 und bei HiROM $FF00.
+Es gibt 3 Versionen des Headers.
+  * Version 1 ist 64 Byte groß und befindet sich bei $C0 - $FF
+  * Version 2 wird dadurch bestimmt, dass $D4 den Wert $00 hat.
+    * $D4 das letzte Zeichen des ROM-Namens muss $00 sein
+    * Byte $B0 - $BF werden hinzugefügt, sodass der gesamte Header 80 ($50) Byte groß ist von $B0 - $FF
+    * $BF enthält zusatzinformationen zum ROM-Typ
+    * $B0 - $BE sind fest $00
+  * Version 3 ist eine Erweiterung von Version 2 und wird durch Byte $DA bestimmt
+    * $DA Device ID wird mit dem festen Wert $33 ersetzt
+    * $D4 ist wieder ein normaler Teil des ROM-Names
+    * $B0 - $BE enthalten weitere Informationen
+    * Device ID ist nun 2 Byte groß und bei $D0 - $D1
+
+Der SNES-Header hat folgende Daten:
+Version 3
+  * 2 Byte $B0 Dev ID (Version 3) Identifikation des Entwicklers
+  * 4 Byte $B2 Game Code (Version 3) Ascii-Test zur Beschreibung des Spiels z. B. SNES, GAME, FIRE , W00T
+  * 6 Byte $B6 Fixed Value/ Unused (Version 3) ist immer (?) $00
+  * 1 Byte $BC Flash Memory (Version 3) Größe gemäß Formel unten
+  * 1 Byte $BD extension RAM size (Version 3) Größe des RAMs des Erweiterungsmoduls gemäß unten stehender Formel
+  * 1 Byte $BE Special Version (Version 3) Soll z. B. Eventversion markieren, für gewähnlich $00
+
+Version 2
+  * 15 Byte $B0 ignoriert, sind immer (?) $00
+
+Version 2/3
+  * 1 Byte $BF Co-CPU-Type (Version 2/3) Typ des zusätzlichen Prozessors in der Cartridge
+
+Alle Versionen
+  * 21 Byte $C0 ROM Name Interner Name der ROM
+    * Wenn $D4 den Wert $00 hat, wird Version 2 genutzt
+  * 1 Byte $D5 Mapping Mode (Alle Versionen
+  * 1 Byte $D6 Cartridge Type
+    * $00 ROM Only
+    * $01 ROM + RAM
+    * $02 ROM + RAM + SRAM
+    * bei anderen Werten:
+      * beginnt der Wert mit
+        * $0* DSP
+        * $1* SuperFX
+        * $2* OBC1
+        * $3* SA-1
+        * $E* Other
+        * $F* Custom Chip
+      * endet der Wert mit
+        * $*3 ROM + Enhancement Chip
+        * $*4 ROM + Enhancement Chip + RAM
+        * $*5 ROM + Enhancement Chip + RAM + SRAM
+        * $*6 ROM + Enhancement Chip + SRAM
+  * 1 Byte $D7 ROM Size gemäß unten stehender Formel
+  * 1 Byte $D8 RAM Size gemäß unten stehendet Formel
+  * 1 Byte $D9 Region Code
+  * 1 Byte $DA Dev ID s. Version 3 Byte $B0, wenn dieses Byte $33 ist ist Version 3 in Benutzung
+  * 1 Byte $DB Version der ROM
+  * 2 Byte $DC Checksum Complement
+  * 2 Byte $DE Checksum
+
+Region
+^ Region ^ Code ^ Type ^
+| Japan | $00 | NTSC |
+| North America | $01 | NTSC |
+| Europe | $02 | PAL |
+| Sweden/Scandinavia | $03 | PAL |
+| Finland | $04 | PAL |
+| Denmark | $05 | PAL |
+| France | $06 | SECAM (PAL-Like, 50 Hz) |
+| Netherlands | $07 | PAL |
+| Spain | $08 | PAL |
+| Germany | $09 | PAL |
+| Italy | $0A | PAL |
+| China | $0B | PAL |
+| Indonesia | $0C | PAL |
+| Korea | $0D | NTSC |
+| Global (?) | $0E | ? |
+| Canada | $0F | NTSC |
+| Brazil | $10 | PAL-M (NTSC-Like, 60 Hz) |
+| Australia | $11 | PAL |
+| Other (1) | $12 | ? |
+| Other (2) | $13 | ? |
+| Other (3) | $14 | ? |
+
+Größenformel
+Die in der ROM eingetragenen Größen Werten berechnet über die Formel log2(size in kB).
+Im Umkehrschluss entscheidetsich die Größe in kB aus 2^Wert.
+
