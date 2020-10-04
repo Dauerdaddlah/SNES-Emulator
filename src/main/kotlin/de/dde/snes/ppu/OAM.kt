@@ -31,7 +31,13 @@ class OAM {
     }
 
     fun oamReset() {
-        internalAddress = Short(tableSelect, address) shl 1 // shl 1 or * 2 because it is a word-address and we store bytes
+        internalAddress = if (tableSelect == 1) {
+            Short(address.rem(0x10), tableSelect)
+        } else {
+            address
+        }
+        internalAddress = internalAddress shl 1
+        //internalAddress = Short(address, tableSelect) shl 1 // shl 1 or *2 because it is a word-address and we store bytes
         high = false
         tempVal = 0
     }
@@ -51,6 +57,10 @@ class OAM {
         }
 
         internalAddress++
+        // TODO is this handling correct?
+        if (internalAddress == 544) {
+            internalAddress = 0
+        }
         high = !high
     }
 

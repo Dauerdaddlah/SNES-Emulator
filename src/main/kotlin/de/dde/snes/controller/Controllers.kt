@@ -179,11 +179,11 @@ class Controllers(
 
                 programmableIo2Line = new2
             }
-            0x42013 -> {
+            0x4213 -> {
                 programmableIo14213 = value.isBitSet(0x40)
                 programmableIo24213 = value.isBitSet(0x80)
             }
-            0x42017,
+            0x4017,
             in 0x4218..0x421F -> {
 
             }

@@ -1,4 +1,4 @@
-package de.dde.snes.cpu
+package de.dde.snes.processor
 
 import de.dde.snes.asByte
 import de.dde.snes.memory.Memory
@@ -9,7 +9,7 @@ class WRAM {
     var address = 0
 
     fun reset() {
-        wram.fill(0)
+        wram.fill(0x55)
     }
 
     fun read(): Int {

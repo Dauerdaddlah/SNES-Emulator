@@ -3,8 +3,6 @@ package de.dde.snes
 import de.dde.snes.apu.APU
 import de.dde.snes.cartridge.Cartridge
 import de.dde.snes.controller.Controllers
-import de.dde.snes.cpu.CPU
-import de.dde.snes.memory.Memory
 import de.dde.snes.memory.MemoryImpl
 import de.dde.snes.ppu.PPU
 import de.dde.snes.processor.Processor
@@ -13,7 +11,6 @@ class SNES {
     val memory = MemoryImpl(this)
     val processor = Processor(memory)
     val apu = APU()
-    val cpu = CPU(this)
     val dma = Array(8) { DMA(this, it) }
     val ppu = PPU(this)
     val controllers = Controllers(this)
@@ -27,7 +24,6 @@ class SNES {
         memory.reset()
         processor.reset()
         apu.reset()
-        cpu.reset()
         ppu.reset()
         controllers.reset()
     }
@@ -41,13 +37,22 @@ class SNES {
     fun start() {
         try {
             while (true) {
-                processor.executeNextInstruction()
-                ppu.updateCycles(processor.cycles)
+                if (processor.instructionCount.rem(1000000) == 0L) {
+                    slog("${processor.instructionCount / 1000000}")
+                }
+                step()
             }
         } catch (e: Exception) {
             slog("AFTER ${processor.instructionCount} - ${processor.cycles}")
             e.printStackTrace()
         }
+    }
+
+    private fun step() {
+        val cyclesStart = processor.cycles
+
+        processor.executeNextInstruction()
+        ppu.updateCycles(processor.cycles, processor.cycles - cyclesStart)
     }
 
     enum class Version(

@@ -1,6 +1,5 @@
 package de.dde.snes
 
-import java.io.BufferedWriter
 import java.io.StringWriter
 import java.io.Writer
 import java.nio.file.Files
@@ -9,14 +8,16 @@ import java.nio.file.StandardOpenOption
 import java.util.*
 
 class SnesLog(
-    fileName: String,
+    val fileName: String,
     val stopCount: Int = 20000,
     val enabled: Boolean = true
 ) {
-    val writer: Writer
+    var writer: Writer
+
+    var i = 0
 
     init {
-        val p = Paths.get(fileName)
+        val p = Paths.get("$fileName$i.log")
         writer = if (enabled) {
             Files.newBufferedWriter(p, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
         } else {
@@ -75,8 +76,21 @@ class SnesLog(
 
         if (counter == stopCount) {
             writer.flush()
+            writer.close()
+            slog("WROTE FILE $i")
+            counter = 0
+            i++
 
-            error("fail")
+            if (i == 1) {
+                error("fail")
+            }
+
+            val p = Paths.get("$fileName$i.log")
+            writer = if (enabled) {
+                Files.newBufferedWriter(p, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)
+            } else {
+                StringWriter()
+            }
         }
     }
 }

@@ -5,16 +5,53 @@ import de.dde.snes.memory.*
 import de.dde.snes.processor.addressmode.*
 import de.dde.snes.processor.instruction.Instruction
 import de.dde.snes.processor.register.*
+import java.nio.file.Files
+import java.nio.file.Paths
 
 class Processor(
     val memory: Memory
 ) {
     val chipVersion: Int = 2
 
+    val wram = WRAM()
+
+    /** if xirq is enabled and hcounter reaches this value an irq is fired (yirq is considered as well) */
+    var htime = 0x1FF
+    /** if yirq is enabled and vcounter reaches this value an irq is fired (xirq is considered as well) */
+    var vtime = 0x1FF
+
+    data class Multiplication(
+        var multiplicantA: Int = 0xFF,
+        var multiplicantB: Int = 0,
+        var product: Int = 0
+    )
+    val multiplication = Multiplication()
+
+    data class Division(
+        var divident: Int = 0xFFFF,
+        var divisor: Int = 0,
+        var quotient: Int = 0,
+        var remainder: Int = 0
+    )
+    val division = Division()
+
+    var multiplicationDone = false
+
+    /** if true, access to a certain region in memory will be faster than normal */
     var fastRom = false
 
-    var irqFlag = false
+    var nmiEnabled = false
+    var nmiRequested = false
+    /** flag is set on nmi and reset on reading */
     var nmiFlag = false
+
+    var yIrqEnabled = false
+    var xIrqEnabled = false
+    var irqRequested = false
+    /** flag set if an irq occurred and reset on reading */
+    var irqFlag = false
+
+    var autoJoypadRead = false
 
     // TODO consider cycles for everything else than memory-access
 
@@ -48,12 +85,39 @@ class Processor(
     var waitForInterrupt = false
         private set
 
-    var cycles = 0
+    var cycles = 0L
         private set
-    var instructionCount = 0
+    var instructionCount = 0L
         private set
 
     fun reset() {
+        wram.reset()
+
+        nmiEnabled = false
+        yIrqEnabled = false
+        xIrqEnabled = false
+        autoJoypadRead = false
+
+        htime = 0x1FF
+        vtime = 0x1FF
+
+        with (multiplication) {
+            multiplicantA = 0xFF
+            multiplicantB = 0
+            product = 0
+        }
+
+        with (division) {
+            divident = 0xFFFF
+            divisor = 0
+            quotient = 0
+            remainder = 0
+        }
+
+        multiplicationDone = false
+
+        fastRom = false
+
         mode = ProcessorMode.EMULATION
         rP.reset()
 
@@ -70,8 +134,8 @@ class Processor(
         instructionCount = 0
 
         rPC.value = readShort(
-            rDBR.value,
-            RESET_VECTOR_ADDRESS
+            0,
+            EMULATION_RESET_VECTOR_ADDRESS
         )
 
         checkRegisterSizes()
@@ -85,21 +149,36 @@ class Processor(
         rS.size16Bit = mode == ProcessorMode.NATIVE
     }
 
+    val log = SnesLog("new", 1000000, false)
+
     fun executeNextInstruction() {
         // TODO correct cycles
         // add 1 cycle no matter the action
         cycles++
 
-        if (waitForInterrupt) {
-            return
+        when {
+            nmiRequested -> {
+                NMI()
+            }
+            irqRequested -> {
+                IRQ()
+            }
+            waitForInterrupt -> {
+                return
+            }
+            else -> {
+                log.prepare(rA.getFull(), rX.get(), rY.get(), rS.get(), rD.get(), rP.get(), rPC.get(), rDBR.get(), rPBR.get(), mode == ProcessorMode.EMULATION)
+
+                val i = fetch()
+                val inst = instructions[i]
+
+                instructionCount++
+
+                execute(inst)
+
+                log.log(instData.inst.operation.symbol, fullAddress(instData.bank, instData.address), instData.value)
+            }
         }
-
-        val i = fetch()
-        val inst = instructions[i]
-
-        instructionCount++
-
-        execute(inst)
     }
 
     fun execute(inst: Instruction) {
@@ -123,19 +202,24 @@ class Processor(
     private fun fetchLong(): Int
         = fetchShort().withLongByte(fetch())
 
-    fun NMI() {
-        slog("NMI")
+    private fun NMI() {
+        nmiRequested = false
+
+        if (!nmiEnabled) {
+            return
+        }
         nmiFlag = true
-        interrupt(NMI_VECTOR_ADDRESS, NMI_VECTOR_ADDRESS)
+        interrupt(EMULATION_NMI_VECTOR_ADDRESS, NATIVE_NMI_VECTOR_ADDRESS, false)
     }
 
-    fun IRQ() {
+    private fun IRQ() {
+        irqRequested = false
+
         if (rP.irqDisable) {
             return
         }
-        slog("IRQ")
         irqFlag = true
-        interrupt(IRQ_VECTOR_ADDRESS, IRQ_VECTOR_ADDRESS)
+        interrupt(EMULATION_IRQ_VECTOR_ADDRESS, NATIVE_IRQ_VECTOR_ADDRESS, false)
     }
 
     private fun readByteInt(bank: Bank, address: ShortAddress): Int {
@@ -196,15 +280,20 @@ class Processor(
         return pullByte() + (pullByte() shl 8)
     }
 
-    fun interrupt(addressEmulation: ShortAddress, addressNative: ShortAddress) {
+    fun interrupt(addressEmulation: ShortAddress, addressNative: ShortAddress, adjustPC: Boolean = true) {
         val interruptAddress = if (mode == ProcessorMode.EMULATION) addressEmulation else addressNative
         waitForInterrupt = false
+
+        if (adjustPC) {
+            // this happens in BRK & COP - as they have a additional description-byte, we need to skip before pushing PC
+            rPC.inc()
+        }
 
         if (mode == ProcessorMode.NATIVE) {
             pushByte(rPBR.value)
         }
 
-        pushShort(rPC.value + 2)
+        pushShort(rPC.value)
         pushByte(rP.get())
 
         rP.decimal = false
@@ -479,8 +568,8 @@ class Processor(
         val result = value1 and value2
         rP.zero = result == 0
         if (!onlyZero) {
-            rP.negative = r.isNegative(result)
-            rP.overflow = if (r.size == 1) result.isBitSet(0x40) else result.isBitSet(0x4000)
+            rP.negative = r.isNegative(value2)
+            rP.overflow = if (r.size == 1) value2.isBitSet(0x40) else value2.isBitSet(0x4000)
         }
     }
 
@@ -897,7 +986,7 @@ class Processor(
         val cli = OperationSimple0("CLI", "Clear irq/interrupt flag") { setPBits(StatusRegister.BIT_IRQ_DISABLE, false) }
         val clv = OperationSimple0("CLV", "Clear Overflow flag") { setPBits(StatusRegister.BIT_OVERFLOW, false) }
         val cmp = OperationRead("CMP", "Compare value with A", rA) { value -> compare(rA, rA.get(), value) }
-        val cop = OperationSimple0("COP", "Coprocessor interrupt") { interrupt(COP_VECTOR_ADDRESS, COP_VECTOR_ADDRESS) }
+        val cop = OperationSimple0("COP", "Coprocessor interrupt") { interrupt(EMULATION_COP_VECTOR_ADDRESS, NATIVE_COP_VECTOR_ADDRESS) }
         val cpx = OperationRead("CPX", "Compare value with X", rX) { value -> compare(rX, rX.get(), value) }
         val cpy = OperationRead("CPY", "Compare value with Y", rY) { value -> compare(rY, rY.get(), value) }
         val dec = OperationSet("DEC", "Decrement Accumulator or Address", rA) { value -> add(rA, value, -1) }
@@ -1361,16 +1450,34 @@ class Processor(
         = instructions[opCode]
 
     companion object {
-        const val COP_VECTOR_ADDRESS: ShortAddress = 0xFFF4
-        const val NATIVE_BRK_VECTOR_ADDRESS: ShortAddress = 0xFFF6
-        const val ABORT_VECTOR_ADDRESS: ShortAddress = 0xFFF8
-        const val NMI_VECTOR_ADDRESS: ShortAddress = 0xFFFA
-        const val RESET_VECTOR_ADDRESS: ShortAddress = 0xFFFC
-        const val IRQ_VECTOR_ADDRESS: ShortAddress = 0xFFFE
-        const val EMULATION_BRK_VECTOR_ADDRESS: ShortAddress = IRQ_VECTOR_ADDRESS
+        const val EMULATION_COP_VECTOR_ADDRESS: ShortAddress = 0xFFF4
+        const val EMULATION_ABORT_VECTOR_ADDRESS: ShortAddress = 0xFFF8
+        const val EMULATION_NMI_VECTOR_ADDRESS: ShortAddress = 0xFFFA
+        const val EMULATION_RESET_VECTOR_ADDRESS: ShortAddress = 0xFFFC
+        const val EMULATION_IRQ_VECTOR_ADDRESS: ShortAddress = 0xFFFE
+        const val EMULATION_BRK_VECTOR_ADDRESS: ShortAddress = EMULATION_IRQ_VECTOR_ADDRESS
 
+        const val NATIVE_COP_VECTOR_ADDRESS: ShortAddress = 0xFFE4
+        const val NATIVE_BRK_VECTOR_ADDRESS: ShortAddress = 0xFFE6
+        const val NATIVE_ABORT_VECTOR_ADDRESS: ShortAddress = 0xFFE8
+        const val NATIVE_NMI_VECTOR_ADDRESS: ShortAddress = 0xFFEA
+        //const val NATIVE_RESET_VECTOR_ADDRESS: ShortAddress = 0xFFFC // not needed, as reset is always in emulation mode
+        const val NATIVE_IRQ_VECTOR_ADDRESS: ShortAddress = 0xFFEE
+
+        // cycles for memory access
         private const val ONE_CYCLE = 6
         private const val TWO_CYCLES = 2 * ONE_CYCLE
         private const val SLOW_ONE_CYCLE = 8
+
+        // cycles per transferred byte in dma = 8
+
+        // cpu is halted during dma/hdma
+        // hdma has prio over dma
+        // hdma channels are deactivated at v-blank
+        // hdma starts at h 278
+        // auto joypad read at 32.5 and 95.5 in first scanline of v-blank
+        // h-blank from 274 to 1
+        // v-blank starts at e1 (2133.2 cleared) or f0
+        // at beginning of v-blank, oam-internal-address is reset to 2102-2103
     }
 }

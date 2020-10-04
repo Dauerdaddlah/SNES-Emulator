@@ -28,7 +28,7 @@ class MemoryImpl(
     override fun initializeFor(cartridge: Cartridge) {
         sram = ByteArray(Memory._1K * cartridge.header.sramSizeKb.toInt()) // max 512 k
 
-        val wramMapping = WRamMapping(snes.cpu.wram.wram)
+        val wramMapping = WRamMapping(snes.processor.wram.wram)
         setMapping(0x7E, 0x7F, 0x0000, 0xFFFF, wramMapping)
         setMapping(0x00, 0x3F, 0x0000, 0x1FFF, wramMapping)
         setMapping(0x80, 0xBF, 0x0000, 0x1FFF, wramMapping)

@@ -14,7 +14,7 @@ class HardwareMapping(
             0x4200,
             in 0x4202..0x420D,
             0x4212,
-            in 0x4214..0x4217 -> snes.cpu.readByte(bank, address)
+            in 0x4214..0x4217 -> readByteCpu(bank, address)
             in 0x4016..0x4017,
             0x4201, 0x4213,
             in 0x4218..0x421F-> snes.controllers.readByte(bank, address)
@@ -38,7 +38,7 @@ class HardwareMapping(
             0x4200,
             in 0x4202..0x420D,
             0x4212,
-            in 0x4214..0x4217 -> snes.cpu.writeByte(bank, address, value)
+            in 0x4214..0x4217 -> writeByteCpu(bank, address, value)
             in 0x4016..0x4017,
             0x4201, 0x4213,
             in 0x4218..0x421F -> snes.controllers.writeByte(bank, address, value)
@@ -48,6 +48,166 @@ class HardwareMapping(
             else -> {
                 if (!allowInvalidAccess) {
                     error("Invalid Write-Access to Hardware for value ${value.toHexString()} to Address ${bank.toBankString()}:${address.toAddressString()}")
+                }
+            }
+        }
+    }
+
+    private fun readByteCpu(bank: Bank, address: ShortAddress): Int {
+        with (snes.processor) {
+            return when (address) {
+                0x2180 -> {
+                    wram.read()
+                }
+                in 0x2181..0x2183 -> {
+                    Memory.OPEN_BUS
+                }
+                0x4200 -> {
+                    var r = 0
+                    if (nmiEnabled) r = r.setBit(0x80)
+                    if (yIrqEnabled) r = r.setBit(0x20)
+                    if (xIrqEnabled) r = r.setBit(0x10)
+                    if (autoJoypadRead) r = r.setBit(0x01)
+                    return r
+                }
+                in 0x4202..0x420A -> {
+                    Memory.OPEN_BUS
+                }
+                0x420B -> {
+                    var r = 0
+                    var i = 0x1
+                    for (dma in snes.dma) {
+                        if (dma.inDma) {
+                            r = r.setBit(i)
+                        }
+                        i = i shl 1
+                    }
+                    return r
+                }
+                0x420C -> {
+                    var r = 0
+                    var i = 0x1
+                    for (dma in snes.dma) {
+                        if (dma.inHdma) {
+                            r = r.setBit(i)
+                        }
+                        i = i shl 1
+                    }
+                    return r
+                }
+                0x420D -> {
+                    Memory.OPEN_BUS
+                }
+                0x4212 -> {
+                    var r = 0
+                    if (snes.ppu.inVBlank) r = r or 0x80
+                    if (snes.ppu.inHBlank) r = r or 0x40
+                    if (snes.controllers.autoJoypadReadActive) r = r or 0x01
+                    r
+                }
+                0x4214 -> {
+                    division.quotient.lowByte()
+                }
+                0x4215 -> {
+                    division.quotient.highByte()
+                }
+                0x4216 -> {
+                    if (multiplicationDone) {
+                        multiplication.product.lowByte()
+                    } else {
+                        division.remainder.lowByte()
+                    }
+                }
+                0x4217 -> {
+                    if (multiplicationDone) {
+                        multiplication.product.highByte()
+                    } else {
+                        division.remainder.highByte()
+                    }
+                }
+                else -> {
+                    println("READ CPU ${address.toString(16)}"); error("not implemented yet")
+                }
+            }
+        }
+    }
+
+    private fun writeByteCpu(bank: Bank, address: ShortAddress, value: Int) {
+        with (snes.processor) {
+            when (address) {
+                0x2180 -> {
+                    wram.write(value)
+                }
+                in 0x2181..0x2183 -> {
+                }
+                0x4200 -> {
+                    nmiEnabled = value.isBitSet(0x80)
+                    yIrqEnabled = value.isBitSet(0x20)
+                    xIrqEnabled = value.isBitSet(0x10)
+                    autoJoypadRead = value.isBitSet(0x01)
+                }
+                0x4202 -> {
+                    multiplication.multiplicantA = value.asByte()
+                }
+                0x4203 -> {
+                    multiplication.multiplicantB = value.asByte()
+                    multiplication.product = multiplication.multiplicantA * multiplication.multiplicantB
+                    multiplicationDone = true
+                }
+                0x4204 -> {
+                    division.divident = division.divident.withLow(value.asByte())
+                }
+                0x4205 -> {
+                    division.divident = division.divident.withHigh(value.asByte())
+                }
+                0x4206 -> {
+                    division.divisor = value.asByte()
+
+                    if (division.divisor == 0) {
+                        division.quotient = 0
+                        division.remainder = 0
+                    } else {
+                        division.quotient = division.divident / division.divisor
+                        division.remainder = division.divident - (division.quotient * division.divisor)
+                    }
+                    multiplicationDone = false
+                }
+                0x4207 -> {
+                    htime = htime.withLow(value.asByte())
+                }
+                0x4208 -> {
+                    htime = htime.withHigh(value.asByte())
+                }
+                0x4209 -> {
+                    vtime = vtime.withLow(value.asByte())
+                }
+                0x420A -> {
+                    vtime = vtime.withHigh(value.asByte())
+                }
+                0x420B -> {
+                    var i = 0x1
+                    for (dma in snes.dma) {
+                        if (value.isBitSet(i)) {
+                            dma.startDma()
+                        }
+                        i = i shl 1
+                    }
+                }
+                0x420C -> {
+                    var i = 0x1
+                    for (dma in snes.dma) {
+                        dma.hdmaRequested = value.isBitSet(i)
+                        i = i shl 1
+                    }
+                }
+                0x420D -> {
+                    fastRom = value.isBitSet(0x1)
+                }
+                0x4212,
+                in 0x4214..0x4217 -> {
+                }
+                else -> {
+                    println("WRITE ${value.toString(16)} to CPU ${address.toString(16)}"); error("not implemented yet")
                 }
             }
         }

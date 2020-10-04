@@ -118,13 +118,12 @@ class PPU(
     }
 
     // TODO
-    val cycles = 0
-    var d = 0
-    fun updateCycles(cycles: Int) {
-        d += cycles - this.cycles
+    var delta = 0L
+    fun updateCycles(cycles: Long, delta: Long) {
+        this.delta += delta
 
-        while(d >= CYCLES_PER_TICK) {
-            d -= CYCLES_PER_TICK
+        while(this.delta >= CYCLES_PER_TICK) {
+            this.delta -= CYCLES_PER_TICK
             hoffset++
 
             if (hoffset == FIRST_H_OFFSET) {
@@ -146,8 +145,8 @@ class PPU(
 
                 if (voffset == FIRST_V_OFFSET + snes.version.heigth) {
                     inVBlank = true
-                    if (snes.cpu.nmiEnabled)
-                    snes.processor.NMI()
+                    if (snes.processor.nmiEnabled)
+                    snes.processor.nmiRequested = true
                 }
 
                 if (voffset == FIRST_V_OFFSET + snes.version.heigth + snes.version.vHeightEnd) {
@@ -155,12 +154,13 @@ class PPU(
                 }
             }
 
-            if (snes.cpu.xIrqEnabled && hoffset == snes.cpu.htime) {
-                snes.processor.IRQ()
-            }
+            if (snes.processor.xIrqEnabled || snes.processor.yIrqEnabled) {
+                val xIrq = if (snes.processor.xIrqEnabled) snes.processor.htime else 0 // if only yIRQ, fire it on x-offset 0
+                val yIrq = if (snes.processor.yIrqEnabled) snes.processor.vtime else voffset // if only xIRQ fire it on every line
 
-            if (snes.cpu.yIrqEnabled && voffset == snes.cpu.vtime) {
-                snes.processor.IRQ()
+                if (hoffset == xIrq && voffset == yIrq) {
+                    snes.processor.irqRequested = true
+                }
             }
         }
     }
@@ -387,7 +387,7 @@ class PPU(
             0x2115 -> {
                 vram.addressIncrementMode = if (value.isBitSet(0x80)) VRAM.IncrementMode.HIGH else VRAM.IncrementMode.LOW
                 vram.increment = VRAM.Increment.byCode(value and 0x3)
-                vram.mapping = VRAM.Mapping.byCode(value shr 2 and 0x30)
+                vram.mapping = VRAM.Mapping.byCode(value shr 2 and 0x3)
             }
             0x2116 -> {
                 vram.address = vram.address.withLow(value.asByte())
