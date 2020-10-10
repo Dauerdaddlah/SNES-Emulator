@@ -1,5 +1,6 @@
 [[https://github.com/gilligan/snesdev/blob/master/docs/65816.txt]]
 [[http://datasheets.chipdb.org/Western%20Design/w65c816s.pdf]]
+{{ :w65c816s.pdf |}}
 
 Das SNES hat einen abgewandelten Prozessor zum Western Digital W65C816S.
 Dieser arbeitet mit 92 Operationen, 24 Addressmodes, 6 16-BIT Register(A, PC, X, Y, D, S) und 3 8-BIT Registern (P, PBR, DBR)
@@ -82,6 +83,8 @@ Die Flags:
   * I - IRQ-Disable wenn auf true, werden keine Interrupts ausgeführt außer NMI
   * Z - Zero, wird bei null gestzt, zeigt ebenfalls gleichheit an. beq - branch if equal springt bei Z = 1
   * C - Carry wird als zusätzliches Bit für einige Operationen verwendet. C und XCE sind der einzige Weg des Prozessormodus anzupassen.
+
+{{:statusregister.png?direct&800|}}
 
 ==== Accumulator (A) ====
 
