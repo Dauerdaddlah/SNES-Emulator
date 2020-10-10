@@ -1,14 +1,14 @@
 [[https://de.wikipedia.org/wiki/Super_Nintendo_Entertainment_System]]
 
 Es gibt zwei Versionen vom SNES
-  * NTSC (Amerika
-    * CPU 3,579545 MHz bzw 3579545 Hz
+  * NTSC (Amerika)
+    * CPU 21,477 MHz bzw 21477000 Hz
     * 60 Hz
     * 256 x 224 px (width x height)
   * PAL (Deutschland)
-    * CPU 3,546895 MHz bzw 3546895 Hz
+    * CPU 21,28137 MHz bzw 21281370 Hz
     * 50 Hz
-    * 256 * 239 px (width x height
+    * 256 * 239 px (width x height)
 
 CPU
   * 16-Bit Prozessor

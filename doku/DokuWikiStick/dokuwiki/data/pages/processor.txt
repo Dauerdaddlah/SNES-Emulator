@@ -1,7 +1,13 @@
 [[https://github.com/gilligan/snesdev/blob/master/docs/65816.txt]]
+[[http://datasheets.chipdb.org/Western%20Design/w65c816s.pdf]]
 
 Das SNES hat einen abgewandelten Prozessor zum Western Digital W65C816S.
 Dieser arbeitet mit 92 Operationen, 24 Addressmodes, 6 16-BIT Register(A, PC, X, Y, D, S) und 3 8-BIT Registern (P, PBR, DBR)
+
+====== Allgemein ======
+
+Der SNES-Prozessor arbeitet Little Endian (LE).
+Das heißt Words (Java Shorts) werden in der Reihenfolge Low-Byte High-Byte gespeichert, Long in der Reihenfolge Low-Byte High-Byte Long-Byte.
 
 ====== Register ======
 Um arbeiten zu können hat der Prozessor eine Anzahl an Register, welcher (mehr oder minder) beliebig genutzt werden können.
@@ -61,6 +67,22 @@ Der PBR wird immer verwendet, wenn das nächste Byte im Ablauf geholt wird, entw
 Der DBR ist ein 8-Bit Register welches die Bank für bestimmte Addressmodi hält.
 
 ==== Status Register (P) ====
+
+das StatusRegister besteht aus den Flags NVMXDIZC.
+Im Emulation Mode ist es NV1BDIZC.
+Das M- und X-Flag dient dazu Accumulator, X und Y zwischen 8 und 16-Bit zu wechseln.
+Dementsprechend werden diese im Emulation Mode anders verwendet:
+Die Flags:
+  * N - Negative steht für einen negativen Wert.
+  * V - Overflow zeigt an, wenn für eine Aktion ein zusätzliches Byte benötigt worden wäre
+  * M - Memory/Accumulator schaltet den Accumulator auf 16-Bit wenn auf 0 gesetzt. Im Emulation Mode ist dieser auf 1 gezwungen
+  * X - Index schaltet X und Y auf 16-Bit wenn auf 0 gesetzt. Wird im Emulation Mode auf 1 gesetzt und als B gehandelt.
+  * B - Break beschreibt das X-Flag im Emulation mode. Es eig. immer 1 im Register und wird bei einem Interrupt als 0 gepusht, wenn der Interrupt nicht durch ein BRK ausgelöst wurde.
+  * D - decimal, wenn auf 1, dann werden ADC und SBC im decimal mode berechnet ($20 - $04 = $16)
+  * I - IRQ-Disable wenn auf true, werden keine Interrupts ausgeführt außer NMI
+  * Z - Zero, wird bei null gestzt, zeigt ebenfalls gleichheit an. beq - branch if equal springt bei Z = 1
+  * C - Carry wird als zusätzliches Bit für einige Operationen verwendet. C und XCE sind der einzige Weg des Prozessormodus anzupassen.
+
 ==== Accumulator (A) ====
 
 Der Accumulator ist einer der Hauptregister mit denen gearbeitet wird.
@@ -79,5 +101,45 @@ Einige Assembler nehmen diese Trennund nicht 100% und erlauben so auch z. B. die
 
 ==== X/Y Register (X/Y) ====
 
+X und Y sind 2 Hilfsregister, welche zusammen mit dem Accumulator verwendet werden.
+Sie sind 16-BIT groß und können je nach P auch als 8-Bit verwendet werden.
+Werden Sie als 8-Bit verwendet ist das High-Byte immer 0
+
 ===== Prozessormodi =====
+
+Der Prozesser hat 2 Modi, Emulation und Native.
+Bei Start des Prozessors ist dieser immer im Emulation Mode und der PC zeigt auf den Reset-Vector.
+Der Modus wird über die XCE-Instruktion gesetzt, wobei ein gesetztes C-Flag den Native-Mode aktiviert.
+Im Emulation Mode ist der Prozessor kompatibel zum NES 6502, dementsprechend sind alle variablen Register im 8-BIT Modus.
+Im Native-Mode können A, X, und Y je nach P als 16-Bit verwendet werden - S ist automatisch 16-BIT.
+Die Interrupt-Handler sind unterschiedlich je nach Modus:
+^ Adresse Emulation ^ Vector Emulation ^ Adresse Native ^ Vector Native ^
+| $FFF4-5 | COP     | $FFE4-5 | COP |
+| $FFF6-7 |         | $FFE6-7 | BRK |
+| $FFF8-9 | ABORT   | $FFE8-9 | ABORT |
+| $FFFA-B | NMI     | $FFEA-B | NMI |
+| $FFFC-D | RESET   | $FFEC-D | RESET (ungenutzt) |
+| $FFFE-F | IRQ/BRK | $FFEE-F | IRQ |
+
+Da der Prozessor beim Startup immer im Emulation-Mode ist wird der Reset-Vector vom Native-Mode nicht genutzt.
+
 ===== Stack Operationen =====
+
+Auf den Stack können einzelne Bytes oder Word gepusht werden.
+Wenn immer ein Wert auf den Stack gepusht wird, wird der Stackpointer um 1 reduziert.
+Wird ein Word gepusht, wird zuerst das High-Byte und anschließend das Low-Byte gepusht, sodass das Word im Speicher wieder in Little-Endian steht.
+Wird ein Byte gepusht, wird zuerst der Wert im gespeichert und anschließend der Pointer dekrementiert.
+
+===== Interrupts =====
+
+Wenn ein Interrupt ausgelöst wird werden alle nötigen Register auf den Stack gepusht und je nach Modus zum Interrupthandler gesprungen.
+Zusätzlich wird PBR auf 0 gesetzt, sodass sich ein Interrupthandler immer in der Bank 0 befindet.
+Außerdem wird das IRQDisable-Flag auf 1 gesetzt (D auf 0), um weitere interrupts zu vermeiden.
+Mithilfe von rti (0x40) wird zum vorherigen Zustand zurückgesprungen.
+Folgende Werte werden in dieser Reihenfolge gepusht und bei rti umgedreht gepullt:
+  * PBR (Native Mode)
+  * PC (Short)
+  * P
+
+Ein Interrupt findet nicht statt, wenn das IRQ-Disable flag true ist.
+Ausnahme hiervon ist der NMI, welcher nicht über P verhindert werden kann.
