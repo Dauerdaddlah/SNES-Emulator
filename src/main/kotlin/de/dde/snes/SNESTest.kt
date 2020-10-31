@@ -16,7 +16,7 @@ fun main() {
         l.handlers.forEach { it.level = Level.FINEST }
     }
 
-    val fileName = "Legend of Zelda, The - A Link to the Past (U) [!].smc"
+    val fileName = "Legend of Zelda, The - A Link to the Past (Germany).sfc"
     //val fileName = "Sim City (U) [!].smc"
     val u = SNES::class.java.classLoader.getResource(fileName) ?: error("file not found")
     val p = Paths.get(u.toURI())
